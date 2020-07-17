@@ -1,0 +1,84 @@
+/*
+ * Globals
+ */
+
+/* Links */
+a,
+a:focus,
+a:hover {
+  color: #fff;
+}
+
+/*
+ * Base structure
+ */
+
+html,
+body {
+  height: 100%;
+  background-color: #181818;
+}
+
+.page-content,
+.blog_grid {
+    position: relative;
+    border-bottom: 0;
+    padding: 10px 20px 20px 20px;
+    background: #282828;
+    margin-bottom: 20px;
+}
+
+.blog_grid p {
+    color: #BBBBBB;
+    font-size: 1em;
+    line-height: 1.5em;
+    margin-top: 1em;
+}
+h1 {
+    color: #ededed;
+}
+h2 a {
+    color: #AAA;
+}
+h2 {
+    font-style: italic;
+}
+ul.links li {
+    font-size: 12px;
+    margin-right: 13px;
+    font-weight: 300;
+    color: #BBBBBB;
+    display: inline-block;
+}
+
+ul.links li a {
+    color: #AAAAAA;
+    font-weight: 300;
+}
+
+.blog_btn.continue,
+.blog_btn.back {
+    display: block;
+    text-align: right;
+    background-color: transparent;
+    color: #b2b2ff;
+    padding: 10px 0;
+}
+.page-content .social-share-all li.social-item i {
+  color: #111;
+  text-align: center;
+  width: 100%;
+  margin-top: 6px;
+}
+.blog_grid .article .social-share li.social-item i {
+  color: #111;
+  text-align: center;
+  width: 100%;
+  margin-top: 6px;
+}
+.about {
+    background: url(http://192.168.1.74:8000/media/images/3d-cartoon-character-small.original.png), var(--main-color);
+    background-repeat: no-repeat, repeat;
+    background-position: right bottom, top left;
+    margin-bottom: 4em;
+}
