@@ -77,8 +77,20 @@ ul.links li a {
   margin-top: 6px;
 }
 .about {
-    background: url(http://192.168.1.74:8000/media/images/3d-cartoon-character-small.original.png), var(--main-color);
+    background: url(https://www.gravatar.com/avatar/d8345385d5a063f35b32d80e21e87f8c?s=100&d=mm), var(--main-color);
     background-repeat: no-repeat, repeat;
     background-position: right bottom, top left;
     margin-bottom: 4em;
 }
+p {
+    font-weight: 300;
+    color: #888;
+}
+code {
+ padding:2px 4px;
+ font-size:90%;
+ color:#c7254e;
+ background-color:#111111;
+ border-radius:4px
+}
+
