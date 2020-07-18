@@ -172,4 +172,4 @@ WAGTAIL_SITE_NAME = "semprini"
 iBASE_URL = 'https://semprini.ml'
 
 PUPUT_AS_PLUGIN = True
-
+PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentProvider'
