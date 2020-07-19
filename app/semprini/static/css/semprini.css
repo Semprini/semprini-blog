@@ -26,6 +26,8 @@ body {
     padding: 10px 20px 20px 20px;
     background: #282828;
     margin-bottom: 20px;
+    border-top: 4px solid var(--main-color);
+
 }
 
 .blog_grid p {
@@ -68,7 +70,7 @@ li {
     display: block;
     text-align: right;
     background-color: transparent;
-    color: #b2b2ff;
+    color: var(--main-color);
     padding: 10px 0;
 }
 .page-content .social-share-all li.social-item i {
@@ -82,6 +84,25 @@ li {
   text-align: center;
   width: 100%;
   margin-top: 6px;
+}
+ul.sidebar {
+    border-top: 2px solid var(--main-color);
+    background-color: #111111;
+    padding: 20px;
+    margin-bottom: 50px;
+    list-style: none;
+    
+}
+ul.sidebar h4 {
+    font-size: 16px;
+    font-weight: 500;
+    color: #CCCCCC;
+    margin-bottom: 20px;
+}
+ul.sidebar li a {
+    font-size: 14px;
+    font-weight: 300;
+    color: #AAAAAA;
 }
 .about {
     background: url(https://www.gravatar.com/avatar/d8345385d5a063f35b32d80e21e87f8c?s=170&d=mm), var(--main-color);
