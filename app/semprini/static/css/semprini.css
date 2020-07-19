@@ -15,8 +15,13 @@ a:hover {
 
 html,
 body {
-  height: 100%;
-  background-color: #181818;
+    height: 100%;
+    background: url(https://semprini.ml/media/images/landscape1.original.jpg), #18181833;
+    background-position:center top;
+    background-attachment:fixed;
+    background-size: cover;
+    background-repeat:   no-repeat;
+    margin: 0px;
 }
 
 .page-content,
@@ -24,7 +29,7 @@ body {
     position: relative;
     border-bottom: 0;
     padding: 10px 20px 20px 20px;
-    background: #282828;
+    background: #282828CC;
     margin-bottom: 20px;
     border-top: 4px solid var(--main-color);
 
@@ -87,7 +92,7 @@ li {
 }
 ul.sidebar {
     border-top: 2px solid var(--main-color);
-    background-color: #111111;
+    background-color: #111111BB;
     padding: 20px;
     margin-bottom: 50px;
     list-style: none;
@@ -196,14 +201,14 @@ code {
 .searchTerm {
     margin: 10px 0 30px 0;
     padding: 5px;
-    background-color: #111111;
+    background-color: #111111BB;
     color: #BBBBBB;
 }
 .blog_sidebar form.search_form input[type="search"] {
     width: 100%;
     border: 1px solid #000000;
     padding: 6px 10px;
-    background-color: #111111;
+    background-color: #111111BB;
     border-top: 2px solid var(--main-color);
     color: #BBBBBB;
 }
