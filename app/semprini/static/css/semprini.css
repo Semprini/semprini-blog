@@ -16,14 +16,13 @@ a:hover {
 html,
 body {
     height: 100%;
-    background: url(https://semprini.ml/media/images/landscape1.original.jpg), #18181833;
+    background: url(https://semprini.ml/media/images/landscape1.original.jpg), #181818;
     background-position:center top;
     background-attachment:fixed;
     background-size: cover;
     background-repeat:   no-repeat;
     margin: 0px;
 }
-
 .page-content,
 .blog_grid {
     position: relative;
@@ -212,15 +211,39 @@ code {
     border-top: 2px solid var(--main-color);
     color: #BBBBBB;
 }
-.blog_grid .article .social-share:after {
-  background: #000000;
-  display: block;
-  height: 2px;
-  width: 78%;
-  position: absolute;
-  top: 19px;
-  right: 0;
-  content: "";
-  text-indent: -9999em;
+.blog_grid h2 a:after {
+    content: '';
+    width: 78%;
+    height: 2px;
+    display: block;
+    margin: 0 auto;
+    background-color: var(--main-color);
+    margin-top: 7px;
 }
-
+.blog_grid .article .social-share:after {
+    background-color: var(--main-color);
+    display: block;
+    height: 2px;
+    width: 78%;
+    position: absolute;
+    top: 19px;
+    right: 0;
+    content: "";
+    text-indent: -9999em;
+}
+.relatedPosts {
+    border-top: 2px solid var(--main-color);
+    background-color: #111111BB;
+    margin: 5px 0px 15px 0;
+    padding: 15px;
+}
+.feature {
+    border-top: 2px solid var(--main-color);
+    background-color: #111111BB;
+    padding: 5px;
+}
+.itemPosts {
+    margin-top: 2px;
+    padding-top: 2px;
+    border-top: 1px dotted var(--main-color);
+}
