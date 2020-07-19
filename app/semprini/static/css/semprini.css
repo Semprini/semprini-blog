@@ -37,17 +37,17 @@ body {
     margin-top: 1em;
 }
 h1 {
-    color: #ededed;
+    color: #DDDDDD;
 }
 h2 a {
-    color: #AAA;
+    color: #DDDDDD;
 }
 h2 {
-    color: #ededed;
+    color: #DDDDDD;
     font-style: italic;
 }
 h3, h4{
-    color: #ddddfd;
+    color: #DDDDDD;
 }
 
 ul.links li {
@@ -59,7 +59,7 @@ ul.links li {
 }
 
 ul.links li a {
-    color: #AAAAAA;
+    color: #DDDDDD;
     font-weight: 300;
 }
 li {
@@ -96,13 +96,13 @@ ul.sidebar {
 ul.sidebar h4 {
     font-size: 16px;
     font-weight: 500;
-    color: #CCCCCC;
+    color: #DDDDDD;
     margin-bottom: 20px;
 }
 ul.sidebar li a {
     font-size: 14px;
     font-weight: 300;
-    color: #AAAAAA;
+    color: #DDDDDD;
 }
 .about {
     background: url(https://www.gravatar.com/avatar/d8345385d5a063f35b32d80e21e87f8c?s=170&d=mm), var(--main-color);
@@ -191,7 +191,31 @@ code {
 #cssmenu ul li a:hover,
 #cssmenu ul li.active > a {
   background: url('images/bg.png');
-  color: #ffffff;
+  color: #DDDDDD;
 }
-
+.searchTerm {
+    margin: 10px 0 30px 0;
+    padding: 5px;
+    background-color: #111111;
+    color: #BBBBBB;
+}
+.blog_sidebar form.search_form input[type="search"] {
+    width: 100%;
+    border: 1px solid #000000;
+    padding: 6px 10px;
+    background-color: #111111;
+    border-top: 2px solid var(--main-color);
+    color: #BBBBBB;
+}
+.blog_grid .article .social-share:after {
+  background: #000000;
+  display: block;
+  height: 2px;
+  width: 78%;
+  position: absolute;
+  top: 19px;
+  right: 0;
+  content: "";
+  text-indent: -9999em;
+}
 
