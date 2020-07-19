@@ -58,6 +58,18 @@
                 {% endif %}
             </section>
         </div>
+        <div style="background-color:#33333355;">
+        <div class="container" >
+        {% if blog_page.display_categories %}
+
+            <div id='cssmenu'>
+            <ul>
+                        {% categories_list %}
+            </ul>
+            </div>
+        {% endif %}
+        </div>
+        </div>
     </div>
 {% endblock blog_header %}
 {% wagtailuserbar %}
@@ -94,12 +106,6 @@
                     <ul class="sidebar">
                         <h4>{% trans 'Popular Entries' %}</h4>
                         {% popular_entries blog_page.num_popular_entries %}
-                    </ul>
-                {% endif %}
-                {% if blog_page.display_categories %}
-                    <ul class="sidebar">
-                        <h4>{% trans 'Categories' %}</h4>
-                        {% categories_list %}
                     </ul>
                 {% endif %}
                 {% if blog_page.display_tags %}
