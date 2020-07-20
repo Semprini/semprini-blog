@@ -21,6 +21,7 @@ RUN python manage.py migrate
 
 RUN useradd wagtail
 RUN chown -R wagtail /code
+RUN mkdir -p /home/app/web
 RUN chown -R wagtail /home/app/web
 USER wagtail
 
