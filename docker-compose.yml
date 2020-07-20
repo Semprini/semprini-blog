@@ -38,6 +38,7 @@ services:
       - db
   db:
     image: postgres:12.0-alpine
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
@@ -47,4 +48,3 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
-
