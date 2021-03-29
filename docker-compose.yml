@@ -45,8 +45,22 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
       - ./.env.prod.db
-
+  pgadmin4:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    env_file:
+      - ./.env.prod
+    ports:
+      - "8889:80"
+  analytics:
+    image: dataiku/dss
+    restart: unless-stopped
+    ports:
+     - "10000:10000"
+    volumes:
+     - dataiku_data:/home/dataiku/dss
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+  dataiku_data:
