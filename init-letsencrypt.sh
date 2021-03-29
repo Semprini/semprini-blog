@@ -5,7 +5,7 @@ if ! [ -x "$(command -v docker-compose)" ]; then
   exit 1
 fi
 
-domains=(semprini.ml www.semprini.ml)
+domains=(semprini.ml www.semprini.ml analytics.sphinx.co.nz rancher.sphinx.co.nz)
 rsa_key_size=4096
 data_path="./data/certbot"
 email="paul@sphinx.co.nz" # Adding a valid address is strongly recommended
