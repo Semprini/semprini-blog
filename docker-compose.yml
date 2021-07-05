@@ -52,13 +52,6 @@ services:
       - ./.env.prod
     ports:
       - "8889:80"
-  analytics:
-    image: dataiku/dss
-    restart: unless-stopped
-    ports:
-     - "10000:10000"
-    volumes:
-     - dataiku_data:/home/dataiku/dss
 volumes:
   postgres_data:
   static_volume:
