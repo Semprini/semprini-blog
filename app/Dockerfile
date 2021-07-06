@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.9
+FROM python:alpine
 LABEL maintainer="someone@semprini"
 
 # Set environment varibles
