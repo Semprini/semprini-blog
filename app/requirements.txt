@@ -1,8 +1,7 @@
 Django
 wagtail
 gunicorn
-psycopg2-binary
+psycopg2-binary==2.8.6
 django-colorful
 django-el-pagination
 django-social-share
-
