@@ -6,6 +6,7 @@ LABEL maintainer="someone@semprini"
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_ENV dev
 
+COPY ./entrypoint.sh /code/entrypoint.sh
 COPY ./requirements.txt /code/requirements.txt
 COPY ./requirements_nodeps.txt /code/requirements_nodeps.txt
 RUN pip install --upgrade pip
