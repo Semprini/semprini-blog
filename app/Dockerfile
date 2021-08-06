@@ -31,4 +31,4 @@ RUN chmod +x /code/entrypoint.sh
 USER wagtail
 
 EXPOSE 8000
-CMD exec /code/entrypoint.sh
+CMD /code/entrypoint.sh
