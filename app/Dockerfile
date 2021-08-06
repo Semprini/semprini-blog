@@ -20,7 +20,6 @@ COPY . /code/
 WORKDIR /code/
 
 RUN python manage.py makemigrations
-RUN python manage.py migrate
 
 RUN useradd wagtail
 RUN chown -R wagtail /code
@@ -29,4 +28,4 @@ RUN chown -R wagtail /home/app/web
 USER wagtail
 
 EXPOSE 8000
-CMD exec gunicorn semprini.wsgi:application --bind 0.0.0.0:8000 --workers 3
+CMD exec entrypoint.sh
