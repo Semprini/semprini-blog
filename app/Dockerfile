@@ -26,6 +26,8 @@ RUN useradd wagtail
 RUN chown -R wagtail /code
 RUN mkdir -p /home/app/web
 RUN chown -R wagtail /home/app/web
+RUN chown -R wagtail /code/entrypoint.sh
+RUN chmod +x /code/entrypoint.sh
 USER wagtail
 
 EXPOSE 8000
