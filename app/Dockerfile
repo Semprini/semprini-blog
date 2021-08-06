@@ -29,4 +29,4 @@ RUN chown -R wagtail /home/app/web
 USER wagtail
 
 EXPOSE 8000
-CMD exec entrypoint.sh
+CMD exec /code/entrypoint.sh
