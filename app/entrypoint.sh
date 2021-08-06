@@ -11,5 +11,5 @@ then
     echo "PostgreSQL started"
 fi
 
-exec "$@"
-
+exec python manage.py migrate
+exec gunicorn semprini.wsgi:application --bind 0.0.0.0:8000 --workers 3
