@@ -39,11 +39,11 @@ if [ "$1" = 'run-cron' ]; then
 	fi
 
 	# Normal startup
-	echo "$BACKUP_SCHEDULE /usr/local/bin/backup.sh" | crontab -
+	echo "$BACKUP_SCHEDULE /code/backup.sh" | crontab -
 	crontab -l
 	crond -f -L /dev/stdout
 
 else
     # Run the backup now
-	/usr/local/bin/backup.sh
+	/code/backup.sh
 fi

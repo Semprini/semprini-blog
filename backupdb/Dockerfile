@@ -4,7 +4,12 @@ LABEL maintainer="someone <some.one@gmail.com>"
 RUN apk add --no-cache python3 py3-pip
 RUN pip install awscli
 
-COPY start.sh /usr/local/bin/
-COPY backup.sh /usr/local/bin/
+COPY start.sh /code/start.sh
+COPY backup.sh /code/backup.sh
+# Set the working directory to /code/
+WORKDIR /code/
 
-CMD ["sh", "start.sh"]
+RUN chmod +x /code/start.sh
+RUN chmod +x /code/backup.sh
+
+CMD ["sh", "/code/start.sh"]
