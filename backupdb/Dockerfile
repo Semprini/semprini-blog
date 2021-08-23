@@ -1,4 +1,4 @@
-FROM postgres:alpine
+FROM postgres:13-alpine
 LABEL maintainer="someone <some.one@gmail.com>"
 
 RUN apk add --no-cache python3 py3-pip
