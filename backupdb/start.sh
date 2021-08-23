@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# vim: set noexpandtab ts=4 sw=4 nolist:
-set -Eeo pipefail
 
 if [ -z "${S3_ACCESS_KEY_ID}" ]; then
 	echo "You need to set the S3_ACCESS_KEY_ID environment variable."

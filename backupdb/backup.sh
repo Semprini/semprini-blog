@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# vim: set noexpandtab ts=4 sw=4 nolist:
-set -Eeo pipefail
 
 if [ -z "${POSTGRES_PORT}" ]; then
 	POSTGRES_PORT=5432
