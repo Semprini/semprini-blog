@@ -51,6 +51,17 @@ services:
     expose:
       - 80
 
+  backupdb:
+    build:
+      context: ./backupdb
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+      - media_volume:/home/app/web/mediafiles      
+    env_file:
+      - ./.env.prod.db
+
 volumes:
   postgres_data:
   static_volume:
