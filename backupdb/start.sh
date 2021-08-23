@@ -30,18 +30,11 @@ if [ -z "${POSTGRES_USER}" ]; then
 	exit 1
 fi
 
-if [ "$1" = 'run-cron' ]; then
-	if [ -z "${BACKUP_SCHEDULE}" ]; then
-		echo "You need to set the BACKUP_SCHEDULE environment variable."
-		exit 1
-	fi
-
+if [ -z "${BACKUP_SCHEDULE}" ]; then
+	/code/backup.sh
+else
 	# Normal startup
 	echo "$BACKUP_SCHEDULE /code/backup.sh" | crontab -
 	crontab -l
 	crond -f -L /dev/stdout
-
-else
-    # Run the backup now
-	/code/backup.sh
 fi
