@@ -171,3 +171,6 @@ iBASE_URL = 'https://semprini.me'
 
 PUPUT_AS_PLUGIN = True
 PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentProvider'
+
+GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
+GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)
