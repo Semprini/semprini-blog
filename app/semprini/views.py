@@ -60,18 +60,21 @@ def login_github_callback(request):
         'Accept': 'application/json'
     }
     result = requests.get(user_api_url, headers=headers)
-    # print(result.json())
     user_data = result.json()
     logging.getLogger('info').info('user data from github {}'.format(user_data))
     email = user_data.get('email', None)
     if not email:
+        logging.getLogger('error').warning('email not present in data received from github {}'.format(user_data))
+
+    username = user_data.get('login', None)
+    if not username:
         messages.error(request, "Invalid data received from GitHub");
-        logging.getLogger('error').error('email not present in data received from github {}'.format(user_data))
-        return redirect(reverse("app:index", args=(), kwargs={}))
+        logging.getLogger('error').error('login not present in data received from github {}'.format(user_data))
+        return redirect("/")
 
     # get the user details, now login this user.
     try:
-        user = User.objects.get(email=email)
+        user = User.objects.get(username=username)
         logging.getLogger('info').info('user already exists in db')
     except User.DoesNotExist as e:
         # if user does not exists in db, create a user and save it.
@@ -89,8 +92,7 @@ def login_github_callback(request):
 
         # create user
         user = User()
-        # let's use the email as username
-        user.username = email
+        user.username = username
         user.email = email
         user.first_name = first_name
         user.last_name = last_name
@@ -107,4 +109,4 @@ def login_github_callback(request):
 
     login(request, user)
     messages.success(request, "Login Successful");
-    return redirect(reverse("app:index", args=(), kwargs={}))
+    return redirect("/")
