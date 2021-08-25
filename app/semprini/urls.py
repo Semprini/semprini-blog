@@ -11,6 +11,7 @@ from wagtail.contrib.sitemaps.views import sitemap
 from puput import urls as puput_urls
 
 from search import views as search_views
+import semprini.views
 
 urlpatterns = [
     url(r'^django-admin/', admin.site.urls),
@@ -33,6 +34,9 @@ if True:  # settings.DEBUG:
 
 
 urlpatterns = urlpatterns + [
+    path(r'login/github/', semprini.views.login_github, name='login_github'),
+    path(r'login/github/callback/', semprini.views.login_github_callback, name='login_github_callback'),
+    path(r'logout/', semprini.views.mylogout, name='mylogout'),
     #path('sitemap.xml', sitemap),
     # For anything not caught by a more specific rule above, hand over to
     # Wagtail's page serving mechanism. This should be the last pattern in
