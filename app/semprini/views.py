@@ -20,7 +20,7 @@ def mylogout(request):
 def login_github(request):
     client_id = settings.GITHUB_CLIENT_ID
     scope = 'read:user'
-    state = 'somerandomstring123semprini'  # to prevent csrf
+    state = 'dontpanic'  # to prevent csrf
     return redirect(
         'https://github.com/login/oauth/authorize?client_id={}&scope={}&state={}'.format(client_id,
                                                                                          scope, state,
@@ -64,11 +64,11 @@ def login_github_callback(request):
     logging.getLogger('info').info('user data from github {}'.format(user_data))
     email = user_data.get('email', None)
     if not email:
-        logging.getLogger('error').warning('email not present in data received from github {}'.format(user_data))
+        email=""
 
     username = user_data.get('login', None)
     if not username:
-        messages.error(request, "Invalid data received from GitHub");
+        messages.error(request, "Invalid data received from GitHub")
         logging.getLogger('error').error('login not present in data received from github {}'.format(user_data))
         return redirect("/")
 
@@ -108,5 +108,5 @@ def login_github_callback(request):
         logging.getLogger('error').error(traceback.format_exc())
 
     login(request, user)
-    messages.success(request, "Login Successful");
-    return redirect("/")
+    messages.success(request, "Login Successful")
+    return redirect('/')
