@@ -6,3 +6,5 @@ django-colorful
 django-el-pagination
 django-social-share
 tapioca-disqus
+django-storages
+boto3
