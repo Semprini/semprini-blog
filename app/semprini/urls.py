@@ -14,13 +14,11 @@ from search import views as search_views
 import semprini.views
 
 urlpatterns = [
+    url(r'^api/heartbeat', semprini.views.heartbeat, name='heartbeat'),
     url(r'^django-admin/', admin.site.urls),
-
     url(r'^admin/', include(wagtailadmin_urls)),
     url(r'^documents/', include(wagtaildocs_urls)),
-
     url(r'^search/$', search_views.search, name='search'),
-
 ]
 
 

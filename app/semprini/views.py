@@ -1,14 +1,20 @@
-from django.shortcuts import redirect, render
-from django.urls import reverse
-from django.conf import settings
-from django.http import HttpResponse
-from django.contrib.auth import logout, login
-from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required
+import os
 import requests
 import logging
 import traceback
+
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth import logout, login
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+
+
+def heartbeat(request):
+    return JsonResponse({ 'build_number': f'{os.environ.get("BUILD_NUMBER", "0")}' })
 
 
 @login_required
