@@ -1,6 +1,7 @@
 data/certbot/
 app/media
 *.asc
+api-heartbeat-ses/deploy*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
