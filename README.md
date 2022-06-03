@@ -1,4 +1,4 @@
-# Blogging system for [semprini.ml](https://semprini.ml)
+# Blogging system for [semprini.me](https://semprini.me)
 
 # Boilerplate for nginx, docker and postgres with Let's Encrypt on docker-compose
 
