@@ -157,7 +157,7 @@ WAGTAIL_SITE_NAME = "semprini"
 iBASE_URL = 'https://semprini.me'
 
 PUPUT_AS_PLUGIN = True
-PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentProvider'
+PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentsProvider'
 
 GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
 GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)

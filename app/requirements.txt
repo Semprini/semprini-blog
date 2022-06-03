@@ -1,9 +1,9 @@
 Django
+git+https://github.com/shtalinberg/django-el-pagination.git@589dc0a
 wagtail
 gunicorn
 psycopg2-binary==2.9
 django-colorful
-django-el-pagination
 django-social-share
 tapioca-disqus
 django-storages

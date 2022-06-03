@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.conf.urls import include, url
+from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
 
@@ -14,11 +14,11 @@ from search import views as search_views
 import semprini.views
 
 urlpatterns = [
-    url(r'^api/heartbeat', semprini.views.heartbeat, name='heartbeat'),
-    url(r'^django-admin/', admin.site.urls),
-    url(r'^admin/', include(wagtailadmin_urls)),
-    url(r'^documents/', include(wagtaildocs_urls)),
-    url(r'^search/$', search_views.search, name='search'),
+    re_path(r'^api/heartbeat', semprini.views.heartbeat, name='heartbeat'),
+    re_path(r'^django-admin/', admin.site.urls),
+    re_path(r'^admin/', include(wagtailadmin_urls)),
+    re_path(r'^documents/', include(wagtaildocs_urls)),
+    re_path(r'^search/$', search_views.search, name='search'),
 ]
 
 
@@ -39,7 +39,7 @@ urlpatterns = urlpatterns + [
     # For anything not caught by a more specific rule above, hand over to
     # Wagtail's page serving mechanism. This should be the last pattern in
     # the list:
-    url(r'',include(puput_urls)),
+    re_path(r'',include(puput_urls)),
     re_path(r'', include(wagtail_urls)),
     # Alternatively, if you want Wagtail pages to be served from a subpath
     # of your site, rather than the site root:
