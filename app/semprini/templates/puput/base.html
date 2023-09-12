@@ -48,13 +48,13 @@
                 <img alt="{{ blog_page.header_image.title }}" src="{{ header_image.url }}">
             </span>
         {% endif %}
-        <div><a href="https://github.com/Semprini">
+        <div><a href="https://github.com/Semprini" title="semprini's github">
                 <svg style="float: right; margin-right: 130px; margin-top: 20px;" viewBox="0 0 32 32" height="64" width="64"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
         </a></div>
         <div class="container">
             <section class="{% if blog_page.header_image %}title-section-image{% else %}title-section{% endif %}">
                 <h1 class="title-header">
-                    <a href="{% pageurl blog_page %}">{{ blog_page.title }}</a>
+                    <a href="{% pageurl blog_page %}" title="home page">{{ blog_page.title }}</a>
                 </h1>
                 {% if not blog_page.header_image %}
                 <h2>{{ blog_page.description }}</h2>
@@ -93,12 +93,13 @@
                     <div class="input-group">
                          <input type="search" name="q" placeholder="{% trans 'Search' %}">
                          <span class="input-group-btn">
-                            <button class="btn btn-default" type="submit"><i class="fa fa-search"></i></button>
+                            <button class="btn btn-default" type="submit" title="search"><i class="fa fa-search"></i></button>
                          </span>
                     </div>
                 </form>
 
                 {% if blog_page.display_last_entries %}
+                    <h3 title="sidebar"></h3>
                     <ul class="sidebar">
                         <h4>{% trans 'Last Entries' %}</h4>
                         {% recent_entries blog_page.num_last_entries %}

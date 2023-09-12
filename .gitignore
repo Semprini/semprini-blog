@@ -1,4 +1,6 @@
 data/certbot/
+data/media/
+data/static/
 app/media
 *.asc
 api-heartbeat-ses/deploy*
