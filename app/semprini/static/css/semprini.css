@@ -16,7 +16,8 @@ a:hover {
 html,
 body {
     height: 100%;
-    background: url(https://semprini.me/media/images/landscape1.original.jpg), #181818;
+    /* background: url(https://semprini.me/media/images/landscape1.original.jpg), #181818; */
+    background: url(https://s3.ap-southeast-2.amazonaws.com/semprini.me/images/landscape1.original.jpg), #181818;
     background-position:center top;
     background-attachment:fixed;
     background-size: cover;

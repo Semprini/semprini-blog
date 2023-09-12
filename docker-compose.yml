@@ -8,8 +8,8 @@ services:
       - ./data/nginx:/etc/nginx/conf.d
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
-      - static_volume:/home/app/web/staticfiles
-      - media_volume:/home/app/web/mediafiles
+      - ./data/static:/home/app/static
+      - ./data/media:/home/app/media
     ports:
       - "1080:80"
     env_file:
@@ -24,8 +24,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     volumes:
-      - static_volume:/home/app/web/staticfiles
-      - media_volume:/home/app/web/mediafiles
+      - ./data/static:/home/app/static
+      - ./data/media:/home/app/media
     expose:
       - 8000
     env_file:
@@ -63,6 +63,4 @@ services:
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:
   

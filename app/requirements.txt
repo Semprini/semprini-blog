@@ -1,10 +1,10 @@
-Django
-git+https://github.com/shtalinberg/django-el-pagination.git@589dc0a
-wagtail
 gunicorn
-psycopg2-binary==2.9
+wagtail>=5.1
+psycopg2-binary
+django-el-pagination
 django-colorful
 django-social-share
 tapioca-disqus
 django-storages
 boto3
+wagtail-markdown
