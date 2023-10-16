@@ -4,6 +4,7 @@ data/static/
 app/media
 *.asc
 api-heartbeat-ses/deploy*
+/app/semprini/settings/local.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
