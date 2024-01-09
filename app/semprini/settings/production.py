@@ -1,7 +1,7 @@
 import os
 from .base import *
 
-DEBUG = True
+DEBUG = False
 
 # SECURITY WARNING: define the correct hosts in production!
 ALLOWED_HOSTS = ["*"]
@@ -22,7 +22,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 STATIC_URL = "https://s3.ap-southeast-2.amazonaws.com/semprini.me/static/"
 MEDIA_URL = "https://s3.ap-southeast-2.amazonaws.com/semprini.me/media/"
 
-try:
-    from .local import *
-except ImportError:
-    pass
+# try:
+#     from .local import *
+# except ImportError:
+#     pass
