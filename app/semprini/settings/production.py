@@ -1,7 +1,7 @@
 import os
 from .base import *
 
-DEBUG = False
+DEBUG = True
 
 # SECURITY WARNING: define the correct hosts in production!
 ALLOWED_HOSTS = ["*"]
