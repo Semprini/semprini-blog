@@ -1,7 +1,9 @@
 data/certbot/
 data/media/
 data/static/
-app/media
+app/media/
+app/static/
+app/export/
 *.asc
 api-heartbeat-ses/deploy*
 /app/semprini/settings/local.py
