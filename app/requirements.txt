@@ -1,5 +1,5 @@
 gunicorn
-wagtail==5.2.2
+wagtail==6.1
 psycopg2-binary
 django-el-pagination
 django-colorful

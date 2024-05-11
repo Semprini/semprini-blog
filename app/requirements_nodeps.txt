@@ -1,1 +1,1 @@
-puput
+puput @ git+https://github.com/Semprini/puput.git
