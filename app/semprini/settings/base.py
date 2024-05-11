@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "wagtail.images",
     "wagtail.search",
     "wagtail.admin",
+    "wagtailmarkdown",
     "wagtail",
     "modelcluster",
     "taggit",
@@ -195,3 +196,17 @@ PUPUT_AS_PLUGIN = True
 #     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
 #     STATIC_ROOT = os.environ.get("STATIC_ROOT", os.path.join(BASE_DIR, 'static'))
 #     MEDIA_ROOT = os.environ.get("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
