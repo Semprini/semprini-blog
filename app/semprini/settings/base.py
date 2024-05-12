@@ -177,25 +177,25 @@ WAGTAILSEARCH_BACKENDS = {
 WAGTAILADMIN_BASE_URL = "https://semprini.me"
 
 PUPUT_AS_PLUGIN = True
-# PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentsProvider'
+PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentsProvider'
 
-# GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
-# GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)
+GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
+GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)
 
-# AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
-# if AWS_STORAGE_BUCKET_NAME:
-#     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-#     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-#     AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", None)
-#     AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-#     AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2')
-#     AWS_DEFAULT_ACL = 'public-read'
-#     AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-#     # AWS_LOCATION = ''
-# else:
-#     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
-#     STATIC_ROOT = os.environ.get("STATIC_ROOT", os.path.join(BASE_DIR, 'static'))
-#     MEDIA_ROOT = os.environ.get("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
+if AWS_STORAGE_BUCKET_NAME:
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", None)
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2')
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    # AWS_LOCATION = ''
+else:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+    STATIC_ROOT = os.environ.get("STATIC_ROOT", os.path.join(BASE_DIR, 'static'))
+    MEDIA_ROOT = os.environ.get("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
 
 LOGGING = {
     'version': 1,
