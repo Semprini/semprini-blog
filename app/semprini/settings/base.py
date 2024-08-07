@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
-    # 'wagtail.contrib.sitemaps',
     'wagtail.contrib.routable_page',
     'django_social_share',
     'puput',
@@ -152,7 +151,7 @@ STATICFILES_DIRS = [
 # ManifestStaticFilesStorage is recommended in production, to prevent outdated
 # JavaScript / CSS assets being served from cache (e.g. after a Wagtail upgrade).
 # See https://docs.djangoproject.com/en/4.2/ref/contrib/staticfiles/#manifeststaticfilesstorage
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+# STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -184,18 +183,44 @@ GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)
 
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
 if AWS_STORAGE_BUCKET_NAME:
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", None)
-    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
-    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2')
-    AWS_DEFAULT_ACL = 'public-read'
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-    # AWS_LOCATION = ''
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+            'access_key': os.environ.get("AWS_ACCESS_KEY_ID", None),
+            'secret_key': os.environ.get("AWS_SECRET_ACCESS_KEY", None),
+            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'location': 'media',
+            'object_parameters': {'CacheControl': 'max-age=86400'},
+            'default_acl': 'public-read',
+            'file_overwrite': False,
+            'region_name': os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2'),
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+            'access_key': os.environ.get("AWS_ACCESS_KEY_ID", None),
+            'secret_key': os.environ.get("AWS_SECRET_ACCESS_KEY", None),
+            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'location': 'static',
+            'object_parameters': {'CacheControl': 'max-age=86400'},
+            'default_acl': 'public-read',
+            'file_overwrite': False,
+            'region_name': os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2'),
+            },
+        },
+    }
+
 else:
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        }
+    }
     STATIC_ROOT = os.environ.get("STATIC_ROOT", os.path.join(BASE_DIR, 'static'))
     MEDIA_ROOT = os.environ.get("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
+
 
 LOGGING = {
     'version': 1,
