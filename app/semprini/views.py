@@ -47,7 +47,6 @@ def login_github_callback(request):
         'client_id': settings.GITHUB_CLIENT_ID,
         'client_secret': settings.GITHUB_SECRET,
         'code': code,
-        'Content-Type': 'application/json'
     }
 
     headers = {
@@ -55,9 +54,10 @@ def login_github_callback(request):
     }
 
     # get an access token
-    result = requests.post('https://github.com/login/oauth/access_token', data=params, headers=headers)
+    logging.getLogger('info').info(f'Sending request for access token to github.')
+    result = requests.post(f'https://github.com/login/oauth/access_token?client_id={settings.GITHUB_CLIENT_ID}&client_secret={settings.GITHUB_SECRET}&code={code}', headers=headers)
     token = result.json().get('access_token')
-    logging.getLogger('info').info('token received in response from github')
+    logging.getLogger('info').info(f'token received in response from github. Response = {result.json()}')
 
     # after getting the token, access the user api to get user details
     user_api_url = 'https://api.github.com/user'
