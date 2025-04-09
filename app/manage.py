@@ -3,8 +3,7 @@ import os
 import sys
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", os.environ.get("DJANGO_SETTINGS_MODULE", "semprini.settings.dev"))
-    print(f"SETT:{os.environ.get('DJANGO_SETTINGS_MODULE')}")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", os.environ.get("DJANGO_SETTINGS_MODULE", "settings.dev"))
 
     from django.core.management import execute_from_command_line
 

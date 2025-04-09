@@ -1,10 +1,12 @@
 gunicorn
-wagtail==6.2.1
+django==5.1.4 
+wagtail==6.4.1
 psycopg2-binary
-django-el-pagination
+django-el-pagination @ git+https://github.com/shtalinberg/django-el-pagination.git
 django-colorful
 django-social-share
 tapioca-disqus
 django-storages
 boto3
-wagtail-markdown
+Markdown==3.7
+wagtail-markdown==0.12.1
