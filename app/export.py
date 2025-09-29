@@ -1,10 +1,11 @@
-import os, django
+import os
+import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "semprini.settings.dev")
 django.setup()
 
 
 def main():
-    from puput.models import EntryPage, BlogPage
+    from puput.models import BlogPage
 
     blog = BlogPage.objects.get(title="Semprini")
 
