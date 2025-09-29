@@ -3,6 +3,7 @@ data/media/
 data/static/
 app/media/
 app/static/
+app/static_collected/
 app/export/
 *.asc
 api-heartbeat-ses/deploy*
