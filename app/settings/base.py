@@ -144,7 +144,7 @@ STATICFILES_FINDERS = [
 ]
 
 STATICFILES_DIRS = [
-    os.path.abspath(os.path.join(BASE_DIR, "static")),
+    os.path.join(BASE_DIR, "static"),
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static_collected")
