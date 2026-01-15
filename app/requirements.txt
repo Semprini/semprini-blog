@@ -1,6 +1,6 @@
 gunicorn
 django
-wagtail==7.1.1
+wagtail==7.2.1
 psycopg2-binary
 django-el-pagination @ git+https://github.com/shtalinberg/django-el-pagination.git
 django-colorful
