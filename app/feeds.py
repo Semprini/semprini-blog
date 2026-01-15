@@ -89,8 +89,6 @@ class BlogPageFeed(Feed):
         return None
 
     def item_enclosure_length(self, item):
-        if item.header_image and os.path.isfile(item.header_image.file.path):
-            return item.header_image.file.size
         return 0
 
     def _channel_image_link(self):
