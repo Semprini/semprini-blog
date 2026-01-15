@@ -18,3 +18,4 @@ DATABASES = {
     }
 
 }
+MEDIA_URL = "https://s3.ap-southeast-2.amazonaws.com/semprini.me/media/"

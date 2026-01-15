@@ -11,6 +11,7 @@ from puput import urls as puput_urls
 
 from search import views as search_views
 import views
+import feeds
 
 urlpatterns = [
     path("django-admin/", admin.site.urls),
@@ -35,6 +36,7 @@ urlpatterns = urlpatterns + [
     path(r'logout/', views.mylogout, name='mylogout'),
 
     path('sitemap.xml', sitemap),
+    path(route="feed/", view=feeds.BlogPageFeed(), name="blog_page_feed"),
     # For anything not caught by a more specific rule above, hand over to
     # Wagtail's page serving mechanism. This should be the last pattern in
     # the list:
@@ -44,3 +46,4 @@ urlpatterns = urlpatterns + [
     # of your site, rather than the site root:
     #    path("pages/", include(wagtail_urls)),
 ]
+
