@@ -47,8 +47,8 @@
 		<script type="importmap">
 			{
 				"imports": {
-					"three": "{% static 'js/three.js/three.module.js' %}",
-					"three/addons/": "{% static 'js/three.js/jsm/' %}"
+					"three": "{% get_static_prefix %}js/three.js/three.module.js",
+					"three/addons/": "{% get_static_prefix %}js/three.js/jsm/"
 				}
 			}
 		</script>
@@ -84,7 +84,7 @@
 				scene = new THREE.Scene();
 				scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
 
-				const loader = new GLTFLoader().setPath( "{% static 'models/glb/' %}");
+				const loader = new GLTFLoader().setPath( "{% get_static_prefix %}models/glb/");
 				loader.load( 'semprini_avatar.glb', async function ( gltf ) {
 					scene.add( gltf.scene );
 					render();

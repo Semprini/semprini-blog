@@ -1,4 +1,10 @@
-version: '3.7'
+volumes:
+  postgres18_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./data/postgres18_data
+      o: bind  
 
 services:
   nginx:
@@ -61,6 +67,4 @@ services:
     depends_on:
       - db
 
-volumes:
-  postgres_data:
   
