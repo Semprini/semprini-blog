@@ -4,7 +4,7 @@ data/static/
 data/postgres18_data/
 
 app/media/
-app/static/
+# app/static/
 app/static_collected/
 app/export/
 *.asc
