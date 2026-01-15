@@ -9,7 +9,7 @@ app/static_collected/
 app/export/
 *.asc
 api-heartbeat-ses/deploy*
-/app/semprini/settings/local.py
+app/settings/local.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -70,7 +70,6 @@ coverage.xml
 
 # Django stuff:
 *.log
-local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
