@@ -20,7 +20,7 @@ dependencies = [
     "pytz>=2025.2",
     "requests>=2.32.5",
     "tapioca-disqus>=0.1.2",
-    "wagtail==7.2.1",
+    "wagtail==7.2.3",
     "wagtail-markdown>=0.13.0",
 ]
 
