@@ -31,6 +31,7 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 urlpatterns = urlpatterns + [
+    path('oidc/', include('mozilla_django_oidc.urls')),
     path(r'login/github/', views.login_github, name='login_github'),
     path(r'login/github/callback/', views.login_github_callback, name='login_github_callback'),
     path(r'logout/', views.mylogout, name='mylogout'),

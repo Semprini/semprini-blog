@@ -51,7 +51,27 @@ INSTALLED_APPS = [
     'django_social_share',
     'puput',
     'colorful',
+    'mozilla_django_oidc',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'oidc_backend.SempriniOIDCBackend',
+]
+
+# --- Keycloak OIDC (mozilla-django-oidc) ---
+# Endpoints are fixed to the semprini Keycloak realm; secrets come from env.
+_KC = 'https://auth.semprini.me/realms/semprini/protocol/openid-connect'
+OIDC_RP_CLIENT_ID = os.environ.get('OIDC_RP_CLIENT_ID', '')
+OIDC_RP_CLIENT_SECRET = os.environ.get('OIDC_RP_CLIENT_SECRET', '')
+OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_OP_AUTHORIZATION_ENDPOINT = f'{_KC}/auth'
+OIDC_OP_TOKEN_ENDPOINT = f'{_KC}/token'
+OIDC_OP_USER_ENDPOINT = f'{_KC}/userinfo'
+OIDC_OP_JWKS_ENDPOINT = f'{_KC}/certs'
+OIDC_RP_SCOPES = 'openid email profile'
+LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL_FAILURE = '/'
 
 MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",

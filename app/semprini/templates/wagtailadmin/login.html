@@ -1,0 +1,13 @@
+{% extends "wagtailadmin/login.html" %}
+{% load i18n %}
+
+{% block below_login %}
+<div style="margin-top:1.5rem; text-align:center;">
+    <p style="color:#666; margin-bottom:0.75rem;">{% trans "or" %}</p>
+    <a href="{% url 'oidc_authentication_init' %}?next=/admin/"
+       style="display:inline-block; padding:0.6rem 1.4rem; background:#4a90d9; color:#fff;
+              border-radius:4px; text-decoration:none; font-weight:bold;">
+        {% trans "Sign in with Keycloak" %}
+    </a>
+</div>
+{% endblock %}

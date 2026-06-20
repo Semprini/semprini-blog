@@ -7,10 +7,8 @@ register = template.Library()
 # Subtitle snippets
 @register.inclusion_tag('semprini/tags/subtitle.html', takes_context=True)
 def subtitle(context):
-    pks = Subtitle.objects.values_list('pk', flat=True)
-    random_pk = choice(pks)
-    random_obj = Subtitle.objects.get(pk=random_pk)
-
+    pks = list(Subtitle.objects.values_list('pk', flat=True))
+    random_obj = Subtitle.objects.get(pk=choice(pks)) if pks else None
 
     return {
         'subtitle': random_obj,

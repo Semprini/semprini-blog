@@ -25,7 +25,9 @@ RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-r
  && rm -rf /var/lib/apt/lists/*
 
 # Install the application server.
-RUN pip install "gunicorn==20.0.4"
+# gunicorn 21+ dropped the pkg_resources/setuptools dependency, required on
+# Python 3.12+ (the slim-bookworm image now ships Python 3.14).
+RUN pip install "gunicorn==23.0.0"
 
 # Install the project requirements.
 COPY requirements.txt /

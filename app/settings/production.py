@@ -6,15 +6,29 @@ DEBUG = False
 # SECURITY WARNING: define the correct hosts in production!
 ALLOWED_HOSTS = ["*"]
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'https://www.semprini.me'
-]
 
-CORS_ORIGIN_WHITELIST = [
-    'http://localhost:8000',
-    'https://www.semprini.me'
-]
+def _split_env_list(name, default):
+    value = os.environ.get(name)
+    if not value:
+        return default
+    return [item.strip() for item in value.replace(",", " ").split() if item.strip()]
+
+CSRF_TRUSTED_ORIGINS = _split_env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    [
+        "http://localhost:8000",
+        "https://semprini.me",
+        "https://www.semprini.me",
+    ],
+)
+
+CORS_ORIGIN_WHITELIST = _split_env_list(
+    "DJANGO_CORS_ORIGIN_WHITELIST",
+    CSRF_TRUSTED_ORIGINS,
+)
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
