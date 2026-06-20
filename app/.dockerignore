@@ -1,6 +1,5 @@
 # Django project
 /media/
-/static/
 *.sqlite3
 /app/semprini/settings/local.py
 

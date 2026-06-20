@@ -1,5 +1,5 @@
 {% extends "puput/base.html" %}
-{% load i18n wagtailcore_tags wagtailimages_tags puput_tags social_share %}
+{% load i18n wagtailcore_tags wagtailimages_tags puput_tags social_share feedback_tags %}
 
 {% block title %}
     {{ self.title }} | {{ blog_page.title }}
@@ -42,8 +42,7 @@
 {% endblock social_share %}
 
 {% block content %}
-    <article class="box page-content"
-             {% if self.id %}data-entry-page-update-comments-url="{% url 'entry_page_update_comments' self.id %}{% endif %}">
+    <article class="box page-content">
         {% include 'puput/entry_page_header.html' with entry=self %}
         <section>
             {% if self.header_image %}
@@ -85,7 +84,7 @@
         {% include 'puput/related_entries.html' with entry=self %}
     {% endif %}
 <div class="box page-content">
-{% show_comments %}
+{% show_feedback self.id %}
 </div>
 {% endblock extra_content %}
 

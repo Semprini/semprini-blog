@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'puput',
     'colorful',
     'mozilla_django_oidc',
+    'feedback',
 ]
 
 AUTHENTICATION_BACKENDS = [
@@ -189,7 +190,6 @@ WAGTAILSEARCH_BACKENDS = {
 WAGTAILADMIN_BASE_URL = "https://semprini.me"
 
 PUPUT_AS_PLUGIN = True
-PUPUT_COMMENTS_PROVIDER = 'puput.comments.DisqusCommentsProvider'
 
 GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
 GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)

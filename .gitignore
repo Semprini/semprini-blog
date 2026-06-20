@@ -1,6 +1,7 @@
 data/certbot/
 data/media/
 data/static/
+data/static_collected/
 data/postgres18_data/
 data/backup/
 

@@ -5,7 +5,6 @@ psycopg2-binary
 django-el-pagination @ git+https://github.com/shtalinberg/django-el-pagination.git
 django-colorful
 django-social-share
-tapioca-disqus
 django-storages
 boto3
 Markdown

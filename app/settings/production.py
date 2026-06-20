@@ -33,5 +33,6 @@ USE_X_FORWARDED_HOST = True
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
+
 STATIC_URL = "https://s3.ap-southeast-2.amazonaws.com/semprini.me/static/"
 MEDIA_URL = "https://s3.ap-southeast-2.amazonaws.com/semprini.me/media/"

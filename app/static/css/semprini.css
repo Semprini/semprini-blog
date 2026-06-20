@@ -256,3 +256,107 @@ code {
     color: var(--main-color);
     background: #111111BB;
 }
+
+/* Feedback panel */
+.feedback-panel {
+    margin-top: 10px;
+}
+.reactions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px dotted var(--main-color);
+}
+.reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #111111BB;
+    border: 1px solid #444;
+    border-radius: 20px;
+    padding: 5px 12px;
+    cursor: pointer;
+    color: #BBBBBB;
+    font-size: 14px;
+    transition: border-color 0.15s, background 0.15s;
+}
+.reaction-btn:hover:not(:disabled) {
+    border-color: var(--main-color);
+    background: #1a1a1aDD;
+}
+.reaction-btn.active {
+    border-color: var(--main-color);
+    background: #1a2a1aDD;
+    color: #DDDDDD;
+}
+.reaction-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.reaction-emoji { font-size: 16px; }
+.reaction-count { font-size: 12px; min-width: 14px; text-align: center; }
+.reactions-hint { color: #888; font-size: 12px; margin-left: 4px; }
+.reactions-hint a { color: var(--main-color); }
+
+.comments-heading {
+    color: #DDDDDD;
+    margin: 0 0 15px;
+    font-size: 16px;
+    font-weight: 500;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+}
+.comment-item {
+    background: #111111BB;
+    border-left: 3px solid var(--main-color);
+    padding: 10px 15px;
+    margin-bottom: 12px;
+}
+.comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.comment-meta strong { color: #DDDDDD; font-size: 14px; }
+.comment-date { color: #888; font-size: 12px; }
+.comment-delete-form { margin: 0; display: inline; }
+.btn-delete {
+    background: none;
+    border: none;
+    color: #884444;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+}
+.btn-delete:hover { color: #cc4444; }
+.comment-body { color: #BBBBBB; margin: 0; font-size: 14px; line-height: 1.5; }
+.comments-empty { color: #888; font-style: italic; }
+.comments-login-prompt { color: #888; font-size: 14px; margin-top: 15px; }
+.comments-login-prompt a { color: var(--main-color); }
+
+.comment-form {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+}
+.comment-form textarea {
+    width: 100%;
+    background: #111111BB;
+    border: 1px solid #444;
+    border-top: 2px solid var(--main-color);
+    color: #BBBBBB;
+    padding: 10px;
+    font-size: 14px;
+    resize: vertical;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+.comment-form textarea:focus {
+    outline: none;
+    border-color: var(--main-color);
+}
+
