@@ -65,6 +65,9 @@
 
 			let camera, scene, renderer;
 
+			const VIEW_WIDTH = 260;
+			const VIEW_HEIGHT = 260;
+
 			init();
 			render();
 
@@ -72,11 +75,14 @@
 
 				renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( 260, 260 );
+				renderer.setSize( VIEW_WIDTH, VIEW_HEIGHT );
 				renderer.toneMapping = THREE.ACESFilmicToneMapping;
 				document.getElementsByClassName('canvas-container')[0].appendChild( renderer.domElement );
 
-				camera = new THREE.PerspectiveCamera( 45, window.devicePixelRatio, 0.25, 20 );
+				// Aspect ratio must match the renderer's width / height, not the
+				// device pixel ratio, otherwise the model is stretched on displays
+				// whose devicePixelRatio differs from the view's aspect.
+				camera = new THREE.PerspectiveCamera( 45, VIEW_WIDTH / VIEW_HEIGHT, 0.25, 20 );
 				camera.position.set( 0.3, -0.01, 2.6 );
 
 				const pmremGenerator = new THREE.PMREMGenerator( renderer );
