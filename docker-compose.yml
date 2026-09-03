@@ -34,7 +34,7 @@ services:
       - postgres18_data:/var/lib/postgresql
       # Auto-restore the most recent dump on first init (only runs when the
       # data dir is empty). The entrypoint gunzips and applies *.sql.gz.
-      - ./data/backup/semprini_2022-05-27T00_00_02Z.sql.gz:/docker-entrypoint-initdb.d/restore.sql.gz:ro
+      - ./data/backup/recovered_migrated_2026-09-03T07-23-18Z.sql.gz:/docker-entrypoint-initdb.d/restore.sql.gz:ro
     env_file:
       - ./.env.prod.db
     ports:
