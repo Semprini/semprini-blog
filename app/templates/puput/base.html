@@ -42,7 +42,7 @@
 <body>
 {% block blog_header %}
     <div class="about">
-        <div class="canvas-container">
+        <div class="canvas-container" data-model="{% static 'models/glb/semprini_avatar.glb' %}">
         </div>
 		<script type="importmap">
 			{
@@ -52,96 +52,7 @@
 				}
 			}
 		</script>
-
-		<script type="module">
-
-			import * as THREE from 'three';
-
-			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-			import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-
-			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-			import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-
-			let camera, scene, renderer;
-
-			const VIEW_WIDTH = 260;
-			const VIEW_HEIGHT = 260;
-
-			init();
-			render();
-
-			function init() {
-
-				renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( VIEW_WIDTH, VIEW_HEIGHT );
-				renderer.toneMapping = THREE.ACESFilmicToneMapping;
-				document.getElementsByClassName('canvas-container')[0].appendChild( renderer.domElement );
-
-				// Aspect ratio must match the renderer's width / height, not the
-				// device pixel ratio, otherwise the model is stretched on displays
-				// whose devicePixelRatio differs from the view's aspect.
-				camera = new THREE.PerspectiveCamera( 45, VIEW_WIDTH / VIEW_HEIGHT, 0.25, 20 );
-				camera.position.set( 0.3, -0.01, 2.6 );
-
-				const pmremGenerator = new THREE.PMREMGenerator( renderer );
-
-				scene = new THREE.Scene();
-				scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
-
-				const loader = new GLTFLoader().setPath( "{% get_static_prefix %}models/glb/");
-				loader.load( 'semprini_avatar.glb', async function ( gltf ) {
-					scene.add( gltf.scene );
-					render();
-				} );
-
-				const controls = new OrbitControls( camera, renderer.domElement );
-				controls.addEventListener( 'change', render ); // use if there is no animation loop
-				controls.minDistance = 2;
-				controls.maxDistance = 10;
-				controls.target.set( 0, 0, 0 );
-				controls.update();
-			}
-
-			function createSpotShadowMesh() {
-
-				const canvas = document.createElement( 'canvas' );
-				canvas.width = 128;
-				canvas.height = 128;
-
-				const context = canvas.getContext( '2d' );
-				const gradient = context.createRadialGradient( canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2 );
-				gradient.addColorStop( 0.1, 'rgba(130,130,130,1)' );
-				gradient.addColorStop( 1, 'rgba(255,255,255,1)' );
-
-				context.fillStyle = gradient;
-				context.fillRect( 0, 0, canvas.width, canvas.height );
-
-				const shadowTexture = new THREE.CanvasTexture( canvas );
-
-				const geometry = new THREE.PlaneGeometry();
-				const material = new THREE.MeshBasicMaterial( {
-					map: shadowTexture, blending: THREE.MultiplyBlending, toneMapped: false
-				} );
-
-				const mesh = new THREE.Mesh( geometry, material );
-				mesh.rotation.x = - Math.PI / 2;
-
-				return mesh;
-			}
-
-            function exportUSDZ() {
-
-				const link = document.getElementById( 'link' );
-				link.click();
-			}
-
-            function render() {
-				renderer.render( scene, camera );
-			}
-
-		</script>        
+		<script type="module" src="{% static 'js/avatar.js' %}"></script>
 
 
         {% if blog_page.header_image %}

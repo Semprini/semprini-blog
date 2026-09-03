@@ -51,6 +51,8 @@ MIME_OVERRIDES = {
     '.html': 'text/html',
     '.txt':  'text/plain',
     '.map':  'application/json',
+    '.glb':  'model/gltf-binary',
+    '.gltf': 'model/gltf+json',
 }
 
 s3 = boto3.client(
