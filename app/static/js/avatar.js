@@ -1,7 +1,8 @@
 // Semprini avatar: skinned GLB with pointer-driven head look-at and IK arm pointing.
 // Coordinates (three.js, Y up): character faces +Z (towards the default camera).
+// The character's own left/right (bone suffix L/R) are mirrored on screen: the .R
+// arm is the one drawn on the left of the canvas.
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { CCDIKSolver } from 'three/addons/animation/CCDIKSolver.js';
@@ -9,17 +10,23 @@ import { CCDIKSolver } from 'three/addons/animation/CCDIKSolver.js';
 const container = document.querySelector( '.canvas-container' );
 const MODEL_URL = container.dataset.model;
 const HOTZONE = container.closest( '.about' ) || container;
+// Blog post titles: the main entry list and the sidebar recent/popular lists.
+const LINK_SELECTOR = 'h2.post_title a, .post-summary h5 a';
 
-const VIEW_WIDTH = 260;
-const VIEW_HEIGHT = 260;
+const MAX_VIEW_WIDTH = 340;
+const VIEW_ASPECT = 340 / 310;   // wide enough for a fully extended arm, tall enough for head to paw
+const HEADER_RESERVE = 138;      // in-flow height the header keeps; the rest overhangs the page
 const HEAD_MAX_ANGLE = THREE.MathUtils.degToRad( 38 );
 const HEAD_SMOOTH = 6;      // 1/s, larger = snappier
+const HEAD_SWITCH_MS = 1400;
 const ARM_SMOOTH = 4;
 const ARM_REACH = 0.74;     // < upper arm + forearm so the elbow stays bent
 const LOOK_PLANE_Z = 1.6;   // plane in front of the face that pointer rays hit
 const IDLE_AFTER_MS = 4000;
+const CAM_TARGET = new THREE.Vector3( - 0.1, - 0.4, 0 );
+const CAM_DIST = 3.8;
 
-let camera, scene, renderer, controls;
+let camera, scene, renderer;
 let skinned, ikSolver;
 let head, headRestQuat;
 const arms = {};            // side -> { ik, upper, hand, restTarget, target, active }
@@ -35,6 +42,11 @@ const raycaster = new THREE.Raycaster();
 const pointerNDC = new THREE.Vector2( 0, 0 );
 const lookPoint = new THREE.Vector3( 0, -0.2, LOOK_PLANE_Z );  // where the head looks
 const lookGoal = new THREE.Vector3().copy( lookPoint );
+const cursorPoint = new THREE.Vector3().copy( lookPoint );
+const linkPoint = new THREE.Vector3();
+let hoverLink = null;
+let lookAtCamera = false;
+let headSwitchAt = 0;
 let pointerInHotzone = false;
 let lastPointerTime = 0;
 let idleNextChange = 0;
@@ -47,12 +59,13 @@ function init() {
 
 	renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
 	renderer.setPixelRatio( window.devicePixelRatio );
-	renderer.setSize( VIEW_WIDTH, VIEW_HEIGHT );
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
 	container.appendChild( renderer.domElement );
 
-	camera = new THREE.PerspectiveCamera( 45, VIEW_WIDTH / VIEW_HEIGHT, 0.25, 20 );
-	camera.position.set( 0.3, -0.25, 3.6 );
+	camera = new THREE.PerspectiveCamera( 45, VIEW_ASPECT, 0.25, 20 );
+	camera.position.set( CAM_TARGET.x + 0.3, CAM_TARGET.y, CAM_DIST );
+	camera.lookAt( CAM_TARGET );
+	layout();
 
 	const pmremGenerator = new THREE.PMREMGenerator( renderer );
 	scene = new THREE.Scene();
@@ -60,18 +73,30 @@ function init() {
 
 	new GLTFLoader().load( MODEL_URL, onModelLoaded );
 
-	controls = new OrbitControls( camera, renderer.domElement );
-	controls.addEventListener( 'change', () => { needsRender = true; } );
-	controls.minDistance = 2;
-	controls.maxDistance = 10;
-	controls.target.set( 0, -0.25, 0 );
-	controls.update();
-
 	window.addEventListener( 'pointermove', onPointerMove, { passive: true } );
-	window.addEventListener( 'blur', () => { pointerInHotzone = false; } );
-	document.addEventListener( 'pointerleave', () => { pointerInHotzone = false; } );
+	window.addEventListener( 'resize', layout );
+	window.addEventListener( 'blur', () => { pointerInHotzone = false; hoverLink = null; } );
+	document.addEventListener( 'pointerleave', () => { pointerInHotzone = false; hoverLink = null; } );
+	document.addEventListener( 'pointerover', onPointerOver, { passive: true } );
 
 	renderer.setAnimationLoop( animate );
+
+}
+
+// The canvas is fixed to the top of the viewport so the avatar stays put while the
+// page scrolls; the container keeps its place in the header layout.
+function layout() {
+
+	const w = Math.round( Math.min( MAX_VIEW_WIDTH, Math.max( 180, window.innerWidth * 0.42 ) ) );
+	const h = Math.round( w / VIEW_ASPECT );
+	container.style.width = `${ w }px`;
+	container.style.height = `${ h }px`;
+	container.style.marginBottom = `${ Math.min( 0, HEADER_RESERVE - h ) }px`;
+	renderer.setSize( w, h );
+	camera.aspect = w / h;
+	camera.updateProjectionMatrix();
+	renderer.domElement.style.left = `${ Math.round( container.getBoundingClientRect().left ) }px`;
+	needsRender = true;
 
 }
 
@@ -127,32 +152,84 @@ function onModelLoaded( gltf ) {
 	}
 
 	ikSolver = new CCDIKSolver( skinned, iks );
-	window.__avatarDebug = { arms, head, ikSolver, get inHot() { return pointerInHotzone; }, lookPoint };
+	window.__avatarDebug = {
+		arms, head, ikSolver, lookPoint, linkPoint, cursorPoint, camera, scene, renderer,
+		get inHot() { return pointerInHotzone; },
+		get link() { return hoverLink; },
+		get lookAtCamera() { return lookAtCamera; },
+	};
 	needsRender = true;
+
+}
+
+function screenToWorld( clientX, clientY, out ) {
+
+	const rect = renderer.domElement.getBoundingClientRect();
+	pointerNDC.set(
+		( ( clientX - rect.left ) / rect.width ) * 2 - 1,
+		- ( ( clientY - rect.top ) / rect.height ) * 2 + 1
+	);
+	raycaster.setFromCamera( pointerNDC, camera );
+	return raycaster.ray.intersectPlane( lookPlane, out ) ? out : null;
 
 }
 
 function onPointerMove( ev ) {
 
 	const rect = renderer.domElement.getBoundingClientRect();
-	pointerNDC.set(
-		( ( ev.clientX - rect.left ) / rect.width ) * 2 - 1,
-		- ( ( ev.clientY - rect.top ) / rect.height ) * 2 + 1
-	);
 	const hz = HOTZONE.getBoundingClientRect();
 	const inside = ( r ) => ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
 	pointerInHotzone = inside( hz ) || inside( rect );
 	lastPointerTime = performance.now();
 
-	raycaster.setFromCamera( pointerNDC, camera );
-	if ( raycaster.ray.intersectPlane( lookPlane, tmpV ) ) lookGoal.copy( tmpV );
+	screenToWorld( ev.clientX, ev.clientY, cursorPoint );
 
 }
 
-function updateIdle( now ) {
+function onPointerOver( ev ) {
+
+	const link = ev.target.closest ? ev.target.closest( LINK_SELECTOR ) : null;
+	if ( link === hoverLink ) return;
+	hoverLink = link;
+	// Start on the cursor so the glance towards the camera reads as a second beat
+	lookAtCamera = false;
+	headSwitchAt = performance.now() + HEAD_SWITCH_MS;
+
+}
+
+// Aim at the start of the title text rather than the middle of a long line.
+function updateLinkPoint() {
+
+	if ( ! hoverLink || ! hoverLink.isConnected ) { hoverLink = null; return false; }
+	const r = hoverLink.getBoundingClientRect();
+	return screenToWorld( r.left + Math.min( 40, r.width / 2 ), r.top + r.height / 2, linkPoint ) !== null;
+
+}
+
+function updateLookTargets( now ) {
+
+	if ( hoverLink ) {
+
+		if ( now >= headSwitchAt ) {
+
+			lookAtCamera = ! lookAtCamera;
+			headSwitchAt = now + HEAD_SWITCH_MS;
+
+		}
+
+		lookGoal.copy( lookAtCamera ? camera.position : cursorPoint );
+		return;
+
+	}
 
 	// A pointer resting in the hotzone keeps the avatar's attention
-	if ( pointerInHotzone || now - lastPointerTime < IDLE_AFTER_MS ) return;
+	if ( pointerInHotzone || now - lastPointerTime < IDLE_AFTER_MS ) {
+
+		lookGoal.copy( cursorPoint );
+		return;
+
+	}
+
 	if ( now < idleNextChange ) return;
 	idleNextChange = now + 2500 + Math.random() * 3500;
 	// glance around, mostly ahead
@@ -178,20 +255,32 @@ function updateHead( dt ) {
 
 }
 
-function updateArms( dt ) {
+function updateArms( dt, linkVisible ) {
 
-	// Point with the arm on the same side as the cursor; the other rests.
-	const pointingSide = pointerInHotzone ? ( lookPoint.x >= 0 ? 'L' : 'R' ) : null;
+	// Hovering a post title: right paw at the title, left paw at the viewer.
+	// Otherwise point with the arm on the same side as the cursor; the other rests.
+	const pointAt = { L: null, R: null };
+	if ( linkVisible ) {
+
+		pointAt.R = linkPoint;
+		pointAt.L = camera.position;
+
+	} else if ( pointerInHotzone ) {
+
+		pointAt[ lookPoint.x >= 0 ? 'L' : 'R' ] = lookPoint;
+
+	}
+
 	const k = 1 - Math.exp( - ARM_SMOOTH * dt );
 	let moved = false;
 	for ( const side of [ 'L', 'R' ] ) {
 
 		const arm = arms[ side ];
-		arm.pointing = side === pointingSide;
+		arm.pointing = pointAt[ side ] !== null;
 		if ( arm.pointing ) {
 
 			arm.upper.getWorldPosition( tmpV );
-			tmpV2.subVectors( lookPoint, tmpV ).normalize();
+			tmpV2.subVectors( pointAt[ side ], tmpV ).normalize();
 			arm.goal.copy( tmpV ).addScaledVector( tmpV2, ARM_REACH );
 
 		} else {
@@ -256,10 +345,12 @@ function animate() {
 
 	}
 
-	updateIdle( performance.now() );
+	const now = performance.now();
+	const linkVisible = updateLinkPoint();
+	updateLookTargets( now );
 	headPrevQ.copy( head.quaternion );
 	updateHead( dt );
-	const armsMoved = updateArms( dt );
+	const armsMoved = updateArms( dt, linkVisible );
 	if ( armsMoved ) solveArms();
 
 	if ( needsRender || armsMoved || headPrevQ.angleTo( head.quaternion ) > 1e-4 ) {

@@ -122,7 +122,14 @@ ul.sidebar li a {
   float: right;
   margin-right: 0px; 
   margin-top: 0px;
-  margin-bottom: -122px;
+}
+/* Pinned to the viewport so the avatar stays put while the page scrolls.
+   'left' and the container's size are set by avatar.js. */
+.canvas-container canvas {
+  position: fixed;
+  top: 0;
+  z-index: 30;
+  pointer-events: none;
 }
 p {
     font-weight: 300;

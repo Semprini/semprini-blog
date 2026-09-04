@@ -55,6 +55,12 @@ MIME_OVERRIDES = {
     '.gltf': 'model/gltf+json',
 }
 
+# Static filenames are not content-hashed, so code and model assets must be
+# revalidated or a deploy takes up to CACHE_MAX_AGE to reach returning visitors.
+# Revalidation is a cheap 304 when the file has not changed.
+REVALIDATE = {'.js', '.mjs', '.css', '.html', '.json', '.map', '.glb', '.gltf'}
+CACHE_MAX_AGE = 86400
+
 s3 = boto3.client(
     's3',
     region_name=REGION,
@@ -69,9 +75,10 @@ for i, path in enumerate(files, 1):
     key = f"{S3_PREFIX}/{path.relative_to(LOCAL_DIR)}"
     ext = path.suffix.lower()
     content_type = MIME_OVERRIDES.get(ext) or mimetypes.guess_type(str(path))[0] or 'application/octet-stream'
+    cache_control = 'no-cache' if ext in REVALIDATE else f'max-age={CACHE_MAX_AGE}'
     s3.upload_file(
         str(path), BUCKET, key,
-        ExtraArgs={'ContentType': content_type, 'ACL': 'public-read', 'CacheControl': 'max-age=86400'},
+        ExtraArgs={'ContentType': content_type, 'ACL': 'public-read', 'CacheControl': cache_control},
     )
     if i % 50 == 0 or i == len(files):
         print(f'  {i}/{len(files)} uploaded')
