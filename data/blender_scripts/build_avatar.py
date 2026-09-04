@@ -34,6 +34,22 @@ PAW_SCALE = 1.28        # paw radius relative to wrist
 PAW_FLATTEN = 0.82
 PAW_DARKEN = 0.72
 
+# Face features (coordinates from data/blender_scripts/face_data.py analysis)
+EYE = {  # painted-on eye patches on the head dome: x0, x1, z_top, z_bot
+    "R": (-0.39, -0.17, 0.465, 0.23),
+    "L": (0.02, 0.23, 0.395, 0.10),
+}
+LID_INSET = 0.014       # eyelid patch offset in front of the surface
+LID_NX, LID_NZ = 11, 9
+MOUTH_C = Vector((-0.213, -0.672, -0.558))   # small dark indent shell centroid (lip line)
+MOUTH_W, MOUTH_H = 0.085, 0.045              # open-mouth patch half extents; chin ends ~0.09 below the lip
+MOUTH_INSET = 0.012
+MOUTH_NX, MOUTH_NZ = 11, 7
+EAR_R_PIVOT = Vector((-0.47, -0.05, 0.75))   # up ear: root where the cup leaves the dome
+EAR_R_TIP = Vector((-0.56, -0.04, 0.98))
+EAR_L_PIVOT = Vector((0.45, -0.03, 0.62))    # folded ear: root at the side of the head
+EAR_L_TIP = Vector((0.62, -0.10, 0.28))
+
 # ---------------------------------------------------------------- helpers
 def srgb_to_linear(c):
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -100,6 +116,60 @@ def colour_at_hit(loc, fidx):
         Vector((l[2][uv_tri].uv.x, l[2][uv_tri].uv.y, 0)))
     return sample_tex(uv)
 
+# ---------------------------------------------------------------- face feature shells
+# The model is a pile of overlapping shells; classify them before new geometry is added.
+_seen = set()
+_comps = []
+for _v in bm.verts:
+    if _v.index in _seen:
+        continue
+    _stack = [_v]
+    _comp = []
+    while _stack:
+        _cur = _stack.pop()
+        if _cur.index in _seen:
+            continue
+        _seen.add(_cur.index)
+        _comp.append(_cur)
+        for _e in _cur.link_edges:
+            _o = _e.other_vert(_cur)
+            if _o.index not in _seen:
+                _stack.append(_o)
+    _comps.append(_comp)
+
+dome_comp = max(_comps, key=lambda c: sum(1 for v in c if v.co.z > 0.3))
+dome_idx = {v.index for v in dome_comp}
+
+feature_idx = {"Brow.R": set(), "Brow.L": set(), "Ear.L": set(), "Ear.R": set()}
+for _comp in _comps:
+    if _comp is dome_comp:
+        continue
+    n = len(_comp)
+    c = sum((v.co for v in _comp), Vector()) / n
+    idxs = {v.index for v in _comp}
+    if n <= 40 and -0.38 < c.x < -0.18 and 0.44 < c.z < 0.52 and c.y < -0.2:
+        feature_idx["Brow.R"] |= idxs        # black brow arc + lash strips
+    elif n <= 40 and 0.02 < c.x < 0.24 and 0.36 < c.z < 0.47 and c.y < -0.2:
+        feature_idx["Brow.L"] |= idxs
+    elif n <= 130 and c.x > 0.42 and 0.08 < c.z < 0.66:
+        feature_idx["Ear.L"] |= idxs         # folded ear flap shells
+    elif n <= 130 and c.x < -0.32 and c.z > 0.60:
+        feature_idx["Ear.R"] |= idxs         # up ear trim shells
+for k, s in feature_idx.items():
+    print(f"feature {k}: {len(s)} verts")
+
+def ear_weight(p):
+    """Spatial ear membership with a soft base, independent of which shell a vertex is on."""
+    # up ear (.R): everything high on the -x side of the dome
+    w_r = smoothstep((-0.26 - p.x) / 0.20) * smoothstep((p.z - 0.60) / 0.20)
+    # folded ear (.L): the flap hanging off the +x side, front half only
+    w_l = (smoothstep((p.x - 0.34) / 0.16)
+           * smoothstep((p.z - 0.04) / 0.12) * smoothstep((0.72 - p.z) / 0.10)
+           * smoothstep((0.18 - p.y) / 0.14))
+    return w_l, w_r
+
+new_vert_weights = {}   # BMVert -> {bone_name: weight}
+
 def arm_verts(side):
     if side == "L":
         return [v for v in bm.verts if v.co.x > ARM_X_MIN["L"] and v.co.z < Z_NECK - 0.02]
@@ -142,7 +212,9 @@ def radial_profile(centre, z, n):
 # ---------------------------------------------------------------- build new arm geometry
 # Arm colours are baked into a small texture: u = angle around the arm, v = position
 # along the arm (one texel row per ring), left half for .L and right half for .R.
-TEX_ROWS = 2 + ELBOW_STEPS + FOREARM_STEPS + PAW_STEPS + 1
+TEX_ROWS_ARM = 2 + ELBOW_STEPS + FOREARM_STEPS + PAW_STEPS + 1
+LID_ROW = {"L": TEX_ROWS_ARM, "R": TEX_ROWS_ARM + 2}   # two rows per lid: top / bottom shade
+TEX_ROWS = TEX_ROWS_ARM + 4
 SIDE_W = RING_N + 1                     # +1: duplicated seam column
 ARM_TEX_W, ARM_TEX_H = SIDE_W * 2, TEX_ROWS
 arm_px = [0.0] * (ARM_TEX_W * ARM_TEX_H * 4)     # linear RGBA floats, row 0 = bottom
@@ -187,7 +259,22 @@ bsdf.inputs["Metallic"].default_value = bsdf0.inputs["Metallic"].default_value
 me.materials.append(mat_arms)
 ARM_MAT_INDEX = len(me.materials) - 1
 
-new_vert_weights = {}   # BMVert -> {bone_name: weight}
+def flat_material(name, rgb, roughness=0.6):
+    """Untextured material; JS finds the mouth parts by these names."""
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1.0)
+    b.inputs["Roughness"].default_value = roughness
+    m.diffuse_color = (*rgb, 1.0)
+    me.materials.append(m)
+    return len(me.materials) - 1
+
+MOUTH_MASK_MAT = flat_material("mouth_mask", (0.02, 0.005, 0.005))
+MOUTH_CAVITY_MAT = flat_material("mouth_cavity", (0.16, 0.025, 0.02), 0.8)
+MOUTH_TONGUE_MAT = flat_material("mouth_tongue", (0.75, 0.22, 0.25), 0.45)
+MOUTH_TEETH_MAT = flat_material("mouth_teeth", (0.92, 0.9, 0.82), 0.35)
+
 ring_uv = {}            # BMVert -> (u_index, v_row) ; u_index in 0..RING_N
 joints = {}             # side -> dict(shoulder, elbow, wrist, tip)
 
@@ -326,8 +413,155 @@ def build_arm(side):
 build_arm("L")
 build_arm("R")
 
+def conformal_patch(xc, zc, half_w, half_h, nx, nz, inset, weights, uv_of, y_clamp=0.05, mat_index=None):
+    """Elliptical grid of verts projected onto the surface from the front (-y) and
+    pushed forward by `inset`. Hits are clamped to within y_clamp of the centre
+    hit so rays that miss the feature's shell don't drag verts onto the body."""
+    if mat_index is None:
+        mat_index = ARM_MAT_INDEX
+    c_hit = bvh.ray_cast(Vector((xc, -2.0, zc)), Vector((0, 1, 0)), 3.0)[0]
+    y_c = c_hit.y if c_hit is not None else -0.30
+    grid = []
+    for j in range(nz):
+        u = math.cos(math.pi * (j + 0.5) / nz)   # 1 = top .. -1 = bottom, clustered at the ends
+        t = (1 - u) / 2
+        zz = zc + half_h * u
+        hw = half_w * math.sqrt(max(0.0, 1 - u * u))
+        row = []
+        for i in range(nx):
+            s = i / (nx - 1)
+            xx = xc + hw * (2 * s - 1)
+            loc, _n, _f, _d = bvh.ray_cast(Vector((xx, -2.0, zz)), Vector((0, 1, 0)), 3.0)
+            yy = loc.y if loc is not None else y_c
+            yy = max(y_c - y_clamp, min(y_c + y_clamp, yy)) - inset
+            v = bm.verts.new(Vector((xx, yy, zz)))
+            new_vert_weights[v] = weights
+            row.append((v, s, t))
+        grid.append(row)
+    for j in range(nz - 1):
+        for i in range(nx - 1):
+            quad = (grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i])
+            try:
+                f = bm.faces.new(tuple(q[0] for q in quad))
+            except ValueError:
+                continue
+            f.material_index = mat_index
+            f.smooth = True
+            for l, (_v, s, t) in zip(f.loops, quad):
+                l[uv_layer].uv = uv_of(s, t)
+    return grid, y_c - inset
+
+# ---------------------------------------------------------------- eyelid patches
+# The eyes are painted on the dome, so blinking needs geometry: a conformal
+# "sticker" over each eye, weighted to a Lid bone that points down the eye.
+# JS keeps the bone's scale.y tiny (lid retracted under the brow) and raises
+# it towards 1 to blink; the patch is modelled fully closed.
+lid_bones = {}
+
+def build_lid(side):
+    x0, x1, z_top, z_bot = EYE[side]
+    xc, zc = (x0 + x1) / 2, (z_top + z_bot) / 2
+    # fur colour sampled beside the eye (the patch must look like skin, not eye)
+    fur = []
+    for sx in (x0 - 0.06, x1 + 0.06):
+        loc, _n, fidx, _d = bvh.ray_cast(Vector((sx, -2.0, zc)), Vector((0, 1, 0)), 3.0)
+        if loc is not None:
+            fur.append(colour_at_hit(loc, fidx))
+    fur = sum(fur, Vector()) / len(fur)
+    for col_row, shade in ((LID_ROW[side], 1.0), (LID_ROW[side] + 1, 0.85)):
+        for x in range(ARM_TEX_W):
+            put_texel(x, col_row, fur * shade)
+    conformal_patch(xc, zc, (x1 - x0) / 2 * 1.08, (z_top - z_bot) / 2 * 1.06, LID_NX, LID_NZ, LID_INSET,
+                    {f"Lid.{side}": 1.0},
+                    lambda s, t: (0.25, (LID_ROW[side] + 0.5 + t) / ARM_TEX_H), y_clamp=0.08)
+    y_top = bvh.ray_cast(Vector((xc, -2.0, z_top)), Vector((0, 1, 0)), 3.0)[0]
+    y_top = (y_top.y if y_top is not None else -0.30) - LID_INSET
+    lid_bones[side] = (Vector((xc, y_top, z_top)), Vector((xc, y_top, z_bot)))
+
+build_lid("L")
+build_lid("R")
+
+# ---------------------------------------------------------------- mouth
+# The mouth is a stencil portal (set up in avatar.js): the *mask* is a flat
+# ellipse on the lip line, scaled open by the Mouth bone; wherever the mask is
+# visible the JS draws the *cavity* (a dark bowl recessed into the head), the
+# tongue and the teeth instead of the muzzle. Those interior parts ride with the
+# Head and are modelled at full-open size.
+mouth_zc = MOUTH_C.z - MOUTH_H + 0.01
+
+mouth_grid, mouth_y = conformal_patch(
+    MOUTH_C.x, mouth_zc, MOUTH_W, MOUTH_H, MOUTH_NX, MOUTH_NZ, MOUTH_INSET,
+    {"Mouth": 1.0}, lambda s, t: (0.5, 0.5), y_clamp=0.04, mat_index=MOUTH_MASK_MAT)
+mouth_bone = (Vector((MOUTH_C.x, mouth_y, mouth_zc + MOUTH_H)),
+              Vector((MOUTH_C.x, mouth_y, mouth_zc - MOUTH_H)))
+
+def add_solid(verts_faces, mat_index, weights):
+    vs = [bm.verts.new(p) for p in verts_faces[0]]
+    for v in vs:
+        new_vert_weights[v] = weights
+    for idx in verts_faces[1]:
+        try:
+            f = bm.faces.new([vs[i] for i in idx])
+        except ValueError:
+            continue
+        f.material_index = mat_index
+        f.smooth = True
+        for l in f.loops:
+            l[uv_layer].uv = (0.5, 0.5)
+    return vs
+
+def ellipsoid(centre, rx, ry, rz, nu=16, nv=8, half=False):
+    """UV ellipsoid around `centre`; half=True keeps only the +y half (a bowl
+    opening towards -y, i.e. towards the camera) with its rim in the y=0 plane."""
+    pts, faces = [], []
+    rows = []
+    for j in range(nv + 1):
+        phi = math.pi * j / nv
+        if half:
+            phi = math.pi / 2 * j / nv        # equator (rim) .. pole (back wall)
+        row = []
+        for i in range(nu):
+            th = 2 * math.pi * i / nu
+            p = Vector((math.sin(phi) * math.cos(th) * rx, math.cos(phi) * ry, math.sin(phi) * math.sin(th) * rz))
+            if half:
+                p = Vector((math.cos(phi) * math.cos(th) * rx, math.sin(phi) * ry, math.cos(phi) * math.sin(th) * rz))
+            pts.append(centre + p)
+            row.append(len(pts) - 1)
+        rows.append(row)
+    for j in range(nv):
+        for i in range(nu):
+            a, b = rows[j][i], rows[j][(i + 1) % nu]
+            c, d = rows[j + 1][(i + 1) % nu], rows[j + 1][i]
+            faces.append((a, b, c, d))
+    return pts, faces
+
+# cavity: bowl behind the lip, rim just behind the mask, depth into the head (+y)
+MOUTH_DEPTH = 0.11
+cav_c = Vector((MOUTH_C.x, mouth_y + MOUTH_INSET + 0.002, mouth_zc))
+add_solid(ellipsoid(cav_c, MOUTH_W * 1.15, MOUTH_DEPTH, MOUTH_H * 1.25, 18, 8, half=True),
+          MOUTH_CAVITY_MAT, {"Head": 1.0})
+
+# tongue: flattened ellipsoid resting on the cavity floor, tip a little forward
+tongue_c = Vector((MOUTH_C.x, cav_c.y + MOUTH_DEPTH * 0.45, mouth_zc - MOUTH_H * 0.55))
+tongue = ellipsoid(tongue_c, MOUTH_W * 0.62, MOUTH_DEPTH * 0.42, MOUTH_H * 0.42, 14, 7)
+add_solid(tongue, MOUTH_TONGUE_MAT, {"Head": 1.0})
+
+# teeth: small blocks hanging from the upper rim, just inside the cavity
+tooth_w, tooth_h, tooth_d = MOUTH_W * 0.28, MOUTH_H * 0.42, 0.02
+for k in (-1.55, -0.5, 0.5, 1.55):
+    cx = MOUTH_C.x + k * tooth_w * 1.05
+    x0, x1 = cx - tooth_w / 2, cx + tooth_w / 2
+    y0, y1 = cav_c.y + 0.004, cav_c.y + 0.004 + tooth_d
+    # start below the closed-mouth sliver (mask scale.y 0.05) so a shut mouth is just a dark line
+    z1 = mouth_zc + MOUTH_H * 0.98 - 2 * MOUTH_H * 0.09
+    z0 = z1 - tooth_h
+    box = ([Vector((x0, y0, z0)), Vector((x1, y0, z0)), Vector((x1, y1, z0)), Vector((x0, y1, z0)),
+            Vector((x0, y0, z1)), Vector((x1, y0, z1)), Vector((x1, y1, z1)), Vector((x0, y1, z1))],
+           [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)])
+    add_solid(box, MOUTH_TEETH_MAT, {"Head": 1.0})
+
 bm.verts.index_update()
-bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f.material_index == ARM_MAT_INDEX])
+bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f.material_index >= ARM_MAT_INDEX])
 bm.to_mesh(me)
 me.update()
 
@@ -340,8 +574,14 @@ texn.image = arm_img
 print("arm texture", ARM_TEX_PATH, arm_img.size[:])
 
 # ---------------------------------------------------------------- vertex groups (weights)
-bone_names = ["Torso", "Head", "UpperArm.L", "ForeArm.L", "Hand.L", "UpperArm.R", "ForeArm.R", "Hand.R"]
+bone_names = ["Torso", "Head", "UpperArm.L", "ForeArm.L", "Hand.L", "UpperArm.R", "ForeArm.R", "Hand.R",
+              "Ear.L", "Ear.R", "Brow.L", "Brow.R", "Lid.L", "Lid.R", "Mouth"]
 vgs = {n: mesh_ob.vertex_groups.new(name=n) for n in bone_names}
+
+feature_of = {}
+for name, idxs in feature_idx.items():
+    for i in idxs:
+        feature_of[i] = name
 
 new_idx_weights = {v.index: w for v, w in new_vert_weights.items()}
 BLEND = 0.03
@@ -353,7 +593,17 @@ for v in me.vertices:
                 vgs[n].add([i], w, "REPLACE")
         continue
     p = v.co
+    if i in feature_of and not feature_of[i].startswith("Ear"):
+        vgs[feature_of[i]].add([i], 1.0, "REPLACE")
+        continue
     if p.z > Z_NECK + BLEND:
+        w_l, w_r = ear_weight(p)
+        w_ear = max(w_l, w_r)
+        if w_ear > 1e-3:
+            vgs["Ear.L" if w_l >= w_r else "Ear.R"].add([i], w_ear, "REPLACE")
+            if 1 - w_ear > 1e-3:
+                vgs["Head"].add([i], 1 - w_ear, "REPLACE")
+            continue
         vgs["Head"].add([i], 1.0, "REPLACE")
         continue
     # head/torso blend band
@@ -406,6 +656,20 @@ for side in ("L", "R"):
     bone(f"IK_Hand.{side}", j["wrist"], j["wrist"] + Vector((0, 0, -0.12)), "Torso", deform=False)
 look = Vector((-0.05, -1.6, -0.2))
 bone("LookTarget", look, look + Vector((0, 0, 0.12)), "Torso", deform=False)
+
+# Face bones, all children of Head. Lid/Brow/Mouth bones point straight down
+# (-Z) so their glTF local axes line up with world axes for simple JS control:
+# scale.y = along the bone, position offsets in Head space.
+bone("Ear.R", EAR_R_PIVOT, EAR_R_TIP, "Head")
+bone("Ear.L", EAR_L_PIVOT, EAR_L_TIP, "Head")
+for side in ("L", "R"):
+    h, t = lid_bones[side]
+    bone(f"Lid.{side}", h, t, "Head")
+brow_c = {"R": Vector((-0.28, -0.30, 0.49)), "L": Vector((0.13, -0.29, 0.42))}
+for side in ("L", "R"):
+    c = brow_c[side]
+    bone(f"Brow.{side}", c, c + Vector((0, 0, -0.1)), "Head")
+bone("Mouth", mouth_bone[0], mouth_bone[1], "Head")
 
 bpy.ops.object.mode_set(mode="POSE")
 pb = rig.pose.bones
