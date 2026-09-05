@@ -1,0 +1,52 @@
+{% extends 'wagtailadmin/bulk_actions/confirmation/base.html' %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}
+    {% if approve %}{% trans "Approve comments" %}{% else %}{% trans "Unapprove comments" %}{% endif %}
+{% endblock %}
+
+{% block header %}
+    {% if approve %}
+        {% trans "Approve comments" as header_str %}
+    {% else %}
+        {% trans "Unapprove comments" as header_str %}
+    {% endif %}
+    {% include "wagtailadmin/shared/header.html" with title=header_str icon=header_icon %}
+{% endblock header %}
+
+{% block items_with_access %}
+    {% if items %}
+        {% if approve %}
+            <p>{% trans "These comments will become visible on the site:" %}</p>
+        {% else %}
+            <p>{% trans "These comments will be hidden from the site until approved again:" %}</p>
+        {% endif %}
+        <ul>
+            {% for comment in items %}
+                <li>
+                    <a href="{{ comment.edit_url }}" target="_blank" rel="noreferrer">{{ comment.item }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock items_with_access %}
+
+{% block items_with_no_access %}
+    {% trans "You don't have permission to moderate these comments" as no_access_msg %}
+    {% include 'wagtailsnippets/bulk_actions/list_items_with_no_access.html' with items=items_with_no_access no_access_msg=no_access_msg %}
+{% endblock items_with_no_access %}
+
+{% block form_section %}
+    {% if items %}
+        {% if approve %}
+            {% trans 'Yes, approve' as action_button_text %}
+            {% trans "No, don't approve" as no_action_button_text %}
+        {% else %}
+            {% trans 'Yes, unapprove' as action_button_text %}
+            {% trans "No, don't unapprove" as no_action_button_text %}
+        {% endif %}
+        {% include 'wagtailadmin/bulk_actions/confirmation/form.html' %}
+    {% else %}
+        {% include 'wagtailadmin/bulk_actions/confirmation/go_back.html' %}
+    {% endif %}
+{% endblock form_section %}

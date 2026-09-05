@@ -20,9 +20,18 @@ dependencies = [
     "pytz>=2025.2",
     "requests>=2.32.5",
     "tapioca-disqus>=0.1.2",
-    "wagtail==7.2.1",
+    "wagtail==7.4.2",
     "wagtail-markdown>=0.13.0",
 ]
+
+# puput is deliberately absent: it pins wagtail<7.0, so listing it here would
+# drag wagtail back below the 7.4.2 the container runs. The Dockerfile installs
+# it from app/requirements_nodeps.txt with --no-deps; `uv sync` drops it from
+# the local venv, so restore it after syncing with:
+#   uv pip install --no-deps "puput @ git+https://github.com/APSL/puput.git"
+# Keep wagtail here matching app/requirements.txt — collectstatic runs against
+# this venv, and a version skew between the bundle and the running app breaks
+# the admin UI (wrong icon sizes, broken bulk-action URLs).
 
 [tool.uv.sources]
 django-el-pagination = { git = "https://github.com/shtalinberg/django-el-pagination.git" }

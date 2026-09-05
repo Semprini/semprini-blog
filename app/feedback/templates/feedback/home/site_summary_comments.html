@@ -1,0 +1,12 @@
+{% load i18n wagtailadmin_tags %}
+
+<li>
+    {% icon name="comment" %}
+    <a href="{% url 'comment_views:list' %}?is_approved=false">
+        {% blocktrans trimmed count counter=pending_count with total=pending_count %}
+            {{ total }} comment awaiting approval
+        {% plural %}
+            {{ total }} comments awaiting approval
+        {% endblocktrans %}
+    </a>
+</li>

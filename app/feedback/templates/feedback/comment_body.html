@@ -1,0 +1,28 @@
+{% load i18n %}
+<div class="comment-meta">
+  <strong>{{ comment.display_name }}</strong>
+  {% if comment.by_moderator %}<span class="comment-badge-mod">{% trans "moderator" %}</span>{% endif %}
+  <span class="comment-date">{{ comment.created_at|date:"N j, Y" }}</span>
+  {% if not comment.is_approved %}
+  <span class="comment-badge-pending">{% trans "awaiting approval" %}</span>
+  {% endif %}
+  {% if is_moderator %}
+  <form method="post" action="{% url 'feedback_moderate_comment' comment.id %}" class="comment-mod-form">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    {% if comment.is_approved %}
+    <button type="submit" name="action" value="unapprove" class="btn-moderate">{% trans "unapprove" %}</button>
+    {% else %}
+    <button type="submit" name="action" value="approve" class="btn-moderate btn-approve">{% trans "approve" %}</button>
+    {% endif %}
+  </form>
+  {% endif %}
+  {% if comment.can_delete %}
+  <form method="post" action="{% url 'feedback_delete_comment' comment.id %}" class="comment-delete-form">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <button type="submit" class="btn-delete">{% trans "delete" %}</button>
+  </form>
+  {% endif %}
+</div>
+<p class="comment-body">{{ comment.body|linebreaksbr }}</p>

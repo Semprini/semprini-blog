@@ -3,60 +3,75 @@
 
   <div class="reactions-row" data-entry-id="{{ entry_page_id }}">
     {% for r in reactions %}
-    <button class="reaction-btn{% if r.active %} active{% endif %}"
-            data-type="{{ r.type }}"
-            {% if not user or not user.is_authenticated %}disabled title="{% trans 'Log in to react' %}"{% endif %}>
+    <button class="reaction-btn{% if r.active %} active{% endif %}" data-type="{{ r.type }}">
       <span class="reaction-emoji">{{ r.emoji }}</span>
       <span class="reaction-count">{{ r.count }}</span>
     </button>
     {% endfor %}
-    {% if not user or not user.is_authenticated %}
-    <small class="reactions-hint">
-      <a href="{% url 'oidc_authentication_init' %}?next={{ request.path }}">{% trans "Log in" %}</a> {% trans "to react" %}
-    </small>
-    {% endif %}
   </div>
 
-  <div class="comments-section">
-    <h4 class="comments-heading">{% trans "Comments" %} ({{ comments|length }})</h4>
+  <div class="comments-section" id="comments">
+    <h4 class="comments-heading">
+      {% trans "Comments" %} ({{ approved_total }})
+      {% if is_moderator and pending_total %}
+      <span class="comments-pending-count">{{ pending_total }} {% trans "awaiting approval" %}</span>
+      {% endif %}
+    </h4>
 
-    {% for comment in comments %}
-    <div class="comment-item">
-      <div class="comment-meta">
-        <strong>{{ comment.user.get_full_name|default:comment.user.username }}</strong>
-        <span class="comment-date">{{ comment.created_at|date:"N j, Y" }}</span>
-        {% if user and user.is_authenticated %}
-          {% if comment.user == user or user.is_staff %}
-          <form method="post" action="{% url 'feedback_delete_comment' comment.id %}" class="comment-delete-form">
-            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-            <input type="hidden" name="next" value="{{ request.path }}">
-            <button type="submit" class="btn-delete">{% trans "delete" %}</button>
-          </form>
-          {% endif %}
-        {% endif %}
+    {% if comment_state == 'pending' %}
+    <p class="comment-notice">{% trans "Thanks! Your comment will appear once a moderator has approved it." %}</p>
+    {% elif comment_state == 'posted' %}
+    <p class="comment-notice">{% trans "Your comment has been posted." %}</p>
+    {% endif %}
+
+    {% for comment in threads %}
+    <div class="comment-item{% if not comment.is_approved %} comment-pending{% endif %}">
+      {% include 'feedback/comment_body.html' with comment=comment %}
+
+      {% for reply in comment.visible_replies %}
+      <div class="comment-reply{% if not reply.is_approved %} comment-pending{% endif %}">
+        {% include 'feedback/comment_body.html' with comment=reply %}
       </div>
-      <p class="comment-body">{{ comment.body|linebreaksbr }}</p>
+      {% endfor %}
+
+      {% if is_moderator %}
+      <details class="comment-reply-toggle">
+        <summary>{% trans "Reply" %}</summary>
+        <form method="post" action="{% url 'feedback_add_comment' entry_page_id %}" class="comment-form comment-form-reply">
+          <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <input type="hidden" name="parent_id" value="{{ comment.id }}">
+          <textarea name="body" rows="2" placeholder="{% trans 'Reply as moderator…' %}" required></textarea>
+          <button type="submit" class="blog_btn">{% trans "Post Reply" %}</button>
+        </form>
+      </details>
+      {% endif %}
     </div>
     {% empty %}
     <p class="comments-empty">{% trans "No comments yet. Be the first!" %}</p>
     {% endfor %}
 
-    {% if user and user.is_authenticated %}
     <form method="post" action="{% url 'feedback_add_comment' entry_page_id %}" class="comment-form">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
       <input type="hidden" name="next" value="{{ request.path }}">
-      <textarea name="body" rows="3" placeholder="{% trans 'Write a comment…' %}" required></textarea>
+      {% if not user or not user.is_authenticated %}
+      <div class="comment-identity">
+        <input type="text" name="author_name" maxlength="80" placeholder="{% trans 'Your name (optional)' %}">
+        <input type="email" name="author_email" maxlength="254" placeholder="{% trans 'Email (optional, never shown)' %}">
+      </div>
+      <div class="comment-hp" aria-hidden="true">
+        <label>{% trans "Leave this field empty" %}<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      {% endif %}
+      <textarea name="body" rows="3" maxlength="4000" placeholder="{% trans 'Write a comment…' %}" required></textarea>
       <button type="submit" class="blog_btn">{% trans "Post Comment" %}</button>
+      {% if not is_moderator %}
+      <small class="comment-form-hint">{% trans "Comments are shown once a moderator approves them." %}</small>
+      {% endif %}
     </form>
-    {% else %}
-    <p class="comments-login-prompt">
-      <a href="{% url 'oidc_authentication_init' %}?next={{ request.path }}">{% trans "Log in" %}</a> {% trans "to leave a comment." %}
-    </p>
-    {% endif %}
   </div>
 </div>
 
-{% if user and user.is_authenticated %}
 <script>
 (function () {
   var entryId = {{ entry_page_id }};
@@ -82,4 +97,3 @@
   });
 }());
 </script>
-{% endif %}
