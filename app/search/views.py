@@ -6,7 +6,9 @@ from wagtail.contrib.search_promotions.models import Query
 
 
 def search(request):
-    search_query = request.GET.get("query", None)
+    # puput's sidebar form submits 'q' and this view's own form submits 'query';
+    # both land here because the blog is the site root.
+    search_query = request.GET.get("query") or request.GET.get("q") or None
     page = request.GET.get("page", 1)
 
     if search_query:
