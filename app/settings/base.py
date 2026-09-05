@@ -71,8 +71,24 @@ OIDC_OP_TOKEN_ENDPOINT = f'{_KC}/token'
 OIDC_OP_USER_ENDPOINT = f'{_KC}/userinfo'
 OIDC_OP_JWKS_ENDPOINT = f'{_KC}/certs'
 OIDC_RP_SCOPES = 'openid email profile'
+
+# Keycloak brokers the social logins (GitHub, and Google/Microsoft once their
+# credentials are filled in), so it is the way visitors sign in: send anything
+# that asks for a login - @login_required, Wagtail's private pages - straight
+# there rather than to Django's /accounts/login/, which this project never
+# wires up. The Wagtail admin keeps its own form as a fallback for local
+# superusers; see semprini/templates/wagtailadmin/login.html.
+LOGIN_URL = 'oidc_authentication_init'
 LOGIN_REDIRECT_URL = '/'
 LOGIN_REDIRECT_URL_FAILURE = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+# Lets a link name the identity provider to use, so the header's GitHub button
+# skips Keycloak's own provider-picker page. Only aliases listed here are
+# passed on; they must match the IdP aliases provisioned in semprini-core
+# (core_stack/scripts/setup-keycloak-idp.py).
+OIDC_AUTHENTICATE_CLASS = 'views.SempriniOIDCAuthenticationRequestView'
+OIDC_IDP_HINTS = ('github',)
 
 MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -190,9 +206,6 @@ WAGTAILSEARCH_BACKENDS = {
 WAGTAILADMIN_BASE_URL = "https://semprini.me"
 
 PUPUT_AS_PLUGIN = True
-
-GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", None)
-GITHUB_SECRET = os.environ.get("GITHUB_SECRET", None)
 
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
 if AWS_STORAGE_BUCKET_NAME:

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import include, path
 from django.contrib import admin
+from django.contrib.auth import views as auth_views
 
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail import urls as wagtail_urls
@@ -10,7 +11,6 @@ from wagtail.contrib.sitemaps.views import sitemap
 from puput import urls as puput_urls
 
 from search import views as search_views
-import views
 import feeds
 
 urlpatterns = [
@@ -33,9 +33,10 @@ if settings.DEBUG:
 urlpatterns = urlpatterns + [
     path('oidc/', include('mozilla_django_oidc.urls')),
     path('feedback/', include('feedback.urls')),
-    path(r'login/github/', views.login_github, name='login_github'),
-    path(r'login/github/callback/', views.login_github_callback, name='login_github_callback'),
-    path(r'logout/', views.mylogout, name='mylogout'),
+    # Signing in is Keycloak's job (/oidc/authenticate/ above); signing out is
+    # only ever local - the Keycloak session itself is left alone, so the next
+    # sign-in does not have to go back out to GitHub.
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('sitemap.xml', sitemap),
     path(route="feed/", view=feeds.BlogPageFeed(), name="blog_page_feed"),
