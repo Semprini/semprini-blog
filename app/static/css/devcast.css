@@ -306,3 +306,115 @@
     font-size: 0.85em;
     color: #888888;
 }
+
+/* --- Audio entries ---------------------------------------------------- */
+
+.audioentry__intro {
+    color: #CCCCCC;
+}
+
+.audioplayer {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #141414F2;
+    border-top: 2px solid var(--main-color);
+    border-bottom: 1px solid #333333;
+    padding: 0.5em 0.7em;
+    margin: 1em 0 1.5em 0;
+}
+.audioplayer__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    flex-wrap: wrap;
+}
+.audioplayer__btn {
+    background: none;
+    border: 1px solid #444444;
+    color: #DDDDDD;
+    width: 2.2em;
+    height: 2.2em;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+}
+.audioplayer__btn:hover,
+.audioplayer__btn:focus-visible {
+    border-color: var(--main-color);
+    color: #FFFFFF;
+}
+.audioplayer__seek {
+    flex: 1 1 12em;
+    min-width: 8em;
+    accent-color: var(--main-color);
+}
+.audioplayer__time {
+    color: #999999;
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+}
+.audioplayer__speed select {
+    background: #1A1A1A;
+    color: #CCCCCC;
+    border: 1px solid #444444;
+    padding: 0.15em 0.3em;
+}
+.audioplayer__follow {
+    color: #999999;
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+}
+.audioplayer__hint {
+    color: #777777;
+    font-size: 0.8em;
+    margin: 0.4em 0 0 0;
+}
+
+.cue-section {
+    position: relative;
+    padding: 0.4em 0.9em;
+    border-left: 2px solid transparent;
+    transition: border-color 0.25s ease, background-color 0.25s ease;
+    cursor: pointer;
+}
+.cue-section:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+}
+.cue-section.is-narrating {
+    border-left-color: var(--main-color);
+    background: #FFFFFF0A;
+}
+.cue-section__alias {
+    position: absolute;
+    top: -80px;
+}
+.cue-section__anchor {
+    position: absolute;
+    left: -0.9em;
+    top: 0.5em;
+    color: #555555;
+    opacity: 0;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+}
+.cue-section:hover .cue-section__anchor,
+.cue-section__anchor:focus-visible {
+    opacity: 1;
+}
+
+.audioentry-card__play {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    color: var(--main-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cue-section {
+        transition: none;
+    }
+}

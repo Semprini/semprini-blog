@@ -6,7 +6,7 @@ resolves those labels once and caches the result on the class. Subclassing
 the list and the cache dropped before anything asks what can live under a blog.
 """
 
-PAGE_TYPES = ("devcast.DevProjectPage",)
+PAGE_TYPES = ("devcast.DevProjectPage", "devcast.AudioEntryPage")
 
 
 def install():

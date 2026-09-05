@@ -1,0 +1,45 @@
+{% load i18n %}
+
+{# The cue track is small, so it rides inline rather than costing a request. #}
+{{ cue_track|json_script:"devcast-cue-track" }}
+
+<div class="audioplayer" data-audioblog hidden>
+    <audio class="audioplayer__audio" preload="metadata" src="{{ cue_track.audio.src }}"></audio>
+
+    <div class="audioplayer__bar">
+        <button type="button" class="audioplayer__btn audioplayer__play"
+                aria-label="{% trans 'Play narration' %}" data-play-label="{% trans 'Play narration' %}"
+                data-pause-label="{% trans 'Pause narration' %}">&#9654;</button>
+
+        <button type="button" class="audioplayer__btn audioplayer__prev"
+                aria-label="{% trans 'Previous section' %}">&#9198;</button>
+        <button type="button" class="audioplayer__btn audioplayer__next"
+                aria-label="{% trans 'Next section' %}">&#9197;</button>
+
+        <input type="range" class="audioplayer__seek" min="0" max="1000" value="0" step="1"
+               aria-label="{% trans 'Seek' %}">
+
+        <span class="audioplayer__time"><time class="audioplayer__at">0:00</time> / <time class="audioplayer__total">0:00</time></span>
+
+        <label class="audioplayer__speed">
+            <span class="sr-only">{% trans "Speed" %}</span>
+            <select aria-label="{% trans 'Playback speed' %}">
+                <option value="0.75">0.75&times;</option>
+                <option value="1" selected>1&times;</option>
+                <option value="1.25">1.25&times;</option>
+                <option value="1.5">1.5&times;</option>
+                <option value="2">2&times;</option>
+            </select>
+        </label>
+
+        <label class="audioplayer__follow">
+            <input type="checkbox" checked> <span>{% trans "Follow" %}</span>
+        </label>
+    </div>
+
+    <p class="audioplayer__hint">{% trans "Select any section to jump the narration there." %}</p>
+</div>
+
+<noscript>
+    <p><a href="{{ cue_track.audio.src }}">{% trans "Download the narration audio" %}</a></p>
+</noscript>

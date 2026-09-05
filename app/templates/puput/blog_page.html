@@ -57,6 +57,10 @@
             <article class="box page-content blog_grid">
                 {% include 'devcast/partials/project_card.html' with project=entry %}
             </article>
+            {% elif entry|is_audio_entry %}
+            <article class="box page-content blog_grid">
+                {% include 'devcast/partials/audio_card.html' %}
+            </article>
             {% else %}
             <article class="box page-content blog_grid">
                 {% include 'puput/entry_page_header.html' %}

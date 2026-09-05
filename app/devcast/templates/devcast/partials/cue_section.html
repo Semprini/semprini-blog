@@ -1,0 +1,15 @@
+{% load wagtailcore_tags %}
+
+<section class="cue-section devcast-block devcast-block--{{ block.block_type }}"
+         id="cue-{{ block.id }}"
+         data-cue-id="{{ block.id }}"
+         tabindex="0"
+         role="button"
+         aria-label="Jump narration to this section">
+    {% if block.block_type == "heading" %}
+        {# Readable alias so shared chapter links say what they point at. #}
+        <span class="cue-section__alias" id="c-{{ block.value.text|slugify }}"></span>
+    {% endif %}
+    <a class="cue-section__anchor" href="#cue-{{ block.id }}" aria-label="Link to this section">#</a>
+    {% include_block block %}
+</section>

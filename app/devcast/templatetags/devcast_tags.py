@@ -25,3 +25,19 @@ def is_dev_project(page):
     from ..models import DevProjectPage
 
     return isinstance(page, DevProjectPage)
+
+
+@register.filter
+def is_audio_entry(page):
+    from ..models import AudioEntryPage
+
+    return isinstance(page, AudioEntryPage)
+
+
+@register.filter
+def duration(seconds):
+    """Seconds as m:ss, for listing cards."""
+    if not seconds:
+        return ""
+    total = int(seconds)
+    return f"{total // 60}:{total % 60:02d}"

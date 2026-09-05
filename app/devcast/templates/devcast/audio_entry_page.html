@@ -1,0 +1,53 @@
+{% extends base_template %}
+{% load i18n static wagtailcore_tags wagtailimages_tags devcast_tags feedback_tags %}
+
+{% block title %}{{ page.title }}{% if blog_page %} | {{ blog_page.title }}{% endif %}{% endblock title %}
+
+{% block meta_title %}{% firstof page.seo_title page.title %}{% endblock meta_title %}
+
+{% block meta_description %}{% firstof page.search_description page.intro|striptags %}{% endblock meta_description %}
+
+{% block social_share %}
+    <meta property="og:title" content="{{ page.title }}"/>
+    <meta property="og:type" content="article"/>
+    {% if page.header_image %}
+        {% image page.header_image fill-800x450 as share_image %}
+        <meta property="og:image" content="{{ share_image.url }}"/>
+        <meta name="twitter:image" content="{{ share_image.url }}"/>
+    {% endif %}
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="{{ page.title }}"/>
+{% endblock social_share %}
+
+{% block content %}
+<article class="box page-content audioentry">
+    <h1 class="audioentry__title">{{ page.title }}</h1>
+
+    {% if page.intro %}
+        <div class="audioentry__intro">{{ page.intro|richtext }}</div>
+    {% endif %}
+
+    {% if cue_track %}
+        {% include "devcast/partials/audio_player.html" %}
+    {% endif %}
+
+    <div class="audioentry__sections">
+        {% for block in page.sections %}
+            {% include "devcast/partials/cue_section.html" %}
+        {% endfor %}
+    </div>
+
+    {% if cue_track %}
+        <script type="module" src="{% static 'js/audioblog.js' %}"></script>
+    {% endif %}
+    {% if page.has_3d %}
+        <script type="module" src="{% static 'js/devcast-model.js' %}"></script>
+    {% endif %}
+</article>
+{% endblock content %}
+
+{% block extra_content %}
+    <div class="box page-content">
+        {% show_feedback page.id %}
+    </div>
+{% endblock extra_content %}

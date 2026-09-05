@@ -1,6 +1,6 @@
 # Devcast — design for the devblog and audioblog content types
 
-Status: phases 0-1 built, phases 2+ proposed
+Status: phases 0-2 built, phases 3+ proposed
 Target: semprini.me (Wagtail 7.4 / Django 6.0 / puput as plugin)
 
 ## 1. Goals
@@ -369,6 +369,10 @@ the `web` container touches it. If the two services are later split onto separat
 key should go to the narrator's alone; an internet-facing gunicorn process has no reason to hold
 a billable credential.
 
+The image does not currently contain **ffmpeg**, which the segment concatenation step needs.
+Either add it to [app/Dockerfile](app/Dockerfile) or give the narrator its own image; the web
+container has no use for it.
+
 Job leasing uses `select_for_update(skip_locked=True)` plus a `leased_until` fence, so multiple
 workers (or an accidental double-start) can never double-spend on a synthesis. No broker, no
 Celery, consistent with how `backupdb` is already deployed.
@@ -423,6 +427,11 @@ request:
 - Fallback states: no rendition yet → hide the player, show nothing (the page still reads);
   rendition stale (`hash` mismatch) → play the previous one with a small "narration is being
   re-recorded" note.
+- Seeking is deferred until the media element reports `HAVE_METADATA`, because `currentTime` is
+  silently ignored before then — a reader who clicks a section while the audio is still loading
+  would otherwise get no response at all. The highlight moves immediately regardless, so the
+  click always feels answered. Seeking also needs the audio host to honour Range requests;
+  Wagtail redirects documents to S3 in production, which does, but the local dev server does not.
 
 ### 5.6 Avatar lipsync
 
@@ -546,8 +555,7 @@ they ship containing a download link that the viewer replaces only once a model 
 | --- | --- | --- |
 | 0 | `devcast` app skeleton, `apps.py` subpage patch, block library, `EntryBase` indirection, CSS/JS entry points | No user-visible change |
 | 1 | `DevProjectPage`, `ChangelogEntry`, `DevProjectIndexPage`, templates, foldable history | Ships standalone value |
-| 2 | `AudioEntryPage` with **manually uploaded** audio + hand-authored cues in the admin | Proves the player and highlighting without touching TTS |
-| 3 | `Voice` (per site), `Rendition`, `RenderJob`, `render_narrations` + `rerender_narrations` commands, `narrator` service, ElevenLabs engine, publish hook | The automation |
+| 2 | `AudioEntryPage` with **manually uploaded** audio + hand-authored cues in the admin | Proves the player and highlighting without touching TTS || 3 | `Voice` (per site), `Rendition`, `RenderJob`, `render_narrations` + `rerender_narrations` commands, `narrator` service, ElevenLabs engine, publish hook | The automation |
 | 4 | Amplitude lipsync via the existing `speak()` hook | ~40 lines |
 | 5 | Viseme track, avatar module API, `Utterance` snippets | |
 | 6 | `LocalHTTPEngine` + voice-clone sidecar; re-render sweep | Settings change only |

@@ -15,7 +15,7 @@ from wagtail.search import index
 from wagtailmarkdown.fields import MarkdownField
 
 from . import conf
-from .blocks import SHOWCASE_BLOCKS
+from .blocks import NARRATABLE_BLOCKS, SHOWCASE_BLOCKS
 
 # Which Page class the devcast page types extend is a deployment decision: this
 # site grafts them onto puput's EntryPage so they inherit its URLs, feeds and
@@ -250,6 +250,129 @@ class ChangelogEntry(Orderable):
 
     def __str__(self):
         return f"{self.version} {self.summary}".strip()
+
+
+class AudioEntryPage(PageBase):
+    intro = RichTextField(blank=True)
+    sections = StreamField(NARRATABLE_BLOCKS, blank=True, verbose_name=_("sections"))
+    narration_enabled = models.BooleanField(default=True)
+    manual_audio = models.ForeignKey(
+        get_document_model_string(),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("narration audio"),
+        help_text=_("Uploaded audio. Generated narration replaces this later."),
+    )
+    audio_duration = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name=_("audio length (seconds)"),
+        help_text=_("Used as the end of the final cue."),
+    )
+
+    content_panels = PageBase.content_panels + [
+        FieldPanel("intro"),
+        FieldPanel("sections"),
+        MultiFieldPanel(
+            [
+                FieldPanel("narration_enabled"),
+                FieldPanel("manual_audio"),
+                FieldPanel("audio_duration"),
+                InlinePanel("cues", label=_("Cue")),
+            ],
+            heading=_("Narration"),
+        ),
+    ]
+
+    search_fields = PageBase.search_fields + [index.SearchField("sections")]
+
+    subpage_types = []
+
+    class Meta:
+        verbose_name = _("Audio entry")
+        verbose_name_plural = _("Audio entries")
+
+    def clean(self):
+        # puput insists on body or markdown_body; for an audio entry the
+        # sections are the content.
+        if self.sections and not (self.body or self.markdown_body):
+            Page.clean(self)
+        else:
+            super().clean()
+
+    @property
+    def audio_url(self):
+        return self.manual_audio.url if self.manual_audio else None
+
+    @property
+    def has_3d(self):
+        return any(block.block_type == "model3d" for block in self.sections)
+
+    @property
+    def cue_track(self):
+        """The cue payload the player consumes.
+
+        Hand-authored cues bind to blocks by position, which is throwaway
+        authoring ergonomics; the JSON that comes out is the same block-id
+        keyed shape the renderer will generate later, so the player never has
+        to change.
+        """
+        if not (self.narration_enabled and self.audio_url):
+            return None
+        blocks = list(self.sections)
+        cues = list(self.cues.all().order_by("sort_order"))
+        if not (blocks and cues):
+            return None
+
+        entries = []
+        for position, cue in enumerate(cues[: len(blocks)]):
+            block = blocks[position]
+            following = cues[position + 1] if position + 1 < len(cues) else None
+            entries.append(
+                {
+                    "id": str(block.id),
+                    "start": cue.start,
+                    "end": following.start if following else self.audio_duration,
+                    "kind": block.block_type,
+                }
+            )
+        return {
+            "version": 1,
+            "audio": {"src": self.audio_url, "duration": self.audio_duration},
+            "cues": entries,
+        }
+
+    def narration_script(self):
+        """[(block_id, kind, text)] - the input the speech engine will read."""
+        script = []
+        for block in self.sections:
+            narrate = getattr(block.block, "narration_text", None)
+            text = narrate(block.value) if narrate else ""
+            if text:
+                script.append((str(block.id), block.block_type, text))
+        return script
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context["base_template"] = conf.base_template()
+        context["cue_track"] = self.cue_track
+        return context
+
+
+class AudioCue(Orderable):
+    page = ParentalKey(AudioEntryPage, on_delete=models.CASCADE, related_name="cues")
+    start = models.FloatField(
+        verbose_name=_("starts at (seconds)"),
+        help_text=_("Cues bind to sections in order: the first cue times the first section."),
+    )
+    note = models.CharField(max_length=120, blank=True)
+
+    panels = [FieldPanel("start"), FieldPanel("note")]
+
+    def __str__(self):
+        return f"{self.start}s {self.note}".strip()
 
 
 class DevProjectIndexPage(Page):
