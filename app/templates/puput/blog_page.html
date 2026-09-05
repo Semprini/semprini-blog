@@ -1,6 +1,6 @@
 {% extends "puput/base.html" %}
 
-{% load static i18n wagtailcore_tags wagtailimages_tags puput_tags social_share %}
+{% load static i18n wagtailcore_tags wagtailimages_tags puput_tags social_share devcast_tags %}
 
 {% block title %}
     {% if search_term %}
@@ -45,12 +45,19 @@
 {% block content %}
     {% with per_page=blog_page.num_entries_page %}
         {# 'paginate' tag cannot render dotted variables, so we need to create a context var #}
+        {# .specific so each page type can present its own card in the stream #}
+        {% with entries=entries.specific %}
         {% paginate per_page entries %}
         {% if search_term %}
             <div class="searchTerm">{% trans 'Entries for' %} {{ search_type }} "{{ search_term }}"</div>
         {% endif %}
         {% for entry in entries %}
             {% entry_url entry blog_page as post_url %}
+            {% if entry|is_dev_project %}
+            <article class="box page-content blog_grid">
+                {% include 'devcast/partials/project_card.html' with project=entry %}
+            </article>
+            {% else %}
             <article class="box page-content blog_grid">
                 {% include 'puput/entry_page_header.html' %}
                 <section>
@@ -80,6 +87,7 @@
                     </div>
                 </section>
             </article>
+            {% endif %}
         {% empty %}
             <span>{% trans 'No results found.' %}</span>
         {% endfor %}
@@ -87,5 +95,6 @@
         <div class="pagination">
             {% show_paginator %}
         </div>
+        {% endwith %}
     {% endwith %}
 {% endblock content %}

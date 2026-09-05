@@ -1,0 +1,21 @@
+{% load i18n wagtailimages_tags devcast_tags %}
+
+<article class="devproject-card devproject-card--{{ project.status }}">
+    <a class="devproject-card__link" href="{% devcast_url project %}">
+        {% if project.hero_image %}
+            {% image project.hero_image fill-480x270 as thumb %}
+            <img class="devproject-card__image" src="{{ thumb.url }}" alt="{{ project.hero_image.title }}" loading="lazy">
+        {% endif %}
+        <h3 class="devproject-card__title">{{ project.title }}</h3>
+    </a>
+    {% if project.tagline %}<p class="devproject-card__tagline">{{ project.tagline }}</p>{% endif %}
+    <p class="devproject-card__meta">
+        <span class="devproject__status devproject__status--{{ project.status }}">{{ project.get_status_display }}</span>
+        {% if project.updated %}<span class="devproject__updated">{% trans "Updated" %} {{ project.updated|date:"j M Y" }}</span>{% endif %}
+    </p>
+    {% if project.stack.all %}
+        <ul class="devproject__stack">
+            {% for tag in project.stack.all %}<li>{{ tag }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+</article>

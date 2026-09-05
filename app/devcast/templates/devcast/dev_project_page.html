@@ -1,0 +1,80 @@
+{% extends base_template %}
+{% load i18n static wagtailcore_tags wagtailimages_tags devcast_tags feedback_tags %}
+
+{% block title %}{{ page.title }}{% if blog_page %} | {{ blog_page.title }}{% endif %}{% endblock title %}
+
+{% block meta_title %}{% firstof page.seo_title page.title %}{% endblock meta_title %}
+
+{% block meta_description %}{% firstof page.search_description page.tagline %}{% endblock meta_description %}
+
+{% block social_share %}
+    <meta property="og:title" content="{{ page.title }}"/>
+    <meta property="og:description" content="{{ page.tagline }}"/>
+    {% if page.hero_image %}
+        {% image page.hero_image fill-800x450 as share_image %}
+        <meta property="og:image" content="{{ share_image.url }}"/>
+        <meta name="twitter:image" content="{{ share_image.url }}"/>
+    {% endif %}
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="{{ page.title }}"/>
+    <meta name="twitter:description" content="{{ page.tagline }}"/>
+{% endblock social_share %}
+
+{% block content %}
+<article class="box page-content devproject">
+
+    {% include "devcast/partials/project_hero.html" %}
+
+    {% if page.features.all %}
+        <section class="devproject__features">
+            <ul>
+                {% for feature in page.features.all %}
+                    <li>
+                        {% if feature.icon %}<i class="fa fa-{{ feature.icon }}" aria-hidden="true"></i>{% endif %}
+                        <strong>{{ feature.title }}</strong>
+                        {% if feature.description %}<span>{{ feature.description }}</span>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if page.body %}
+        <section class="devproject__about">
+            {{ page.body|richtext }}
+        </section>
+    {% endif %}
+
+    {% if page.showcase %}
+        <section class="devproject__showcase">
+            {% for block in page.showcase %}
+                <div class="devcast-block devcast-block--{{ block.block_type }}" id="cue-{{ block.id }}" data-cue-id="{{ block.id }}">
+                    {% include_block block %}
+                </div>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    {% if page.roadmap.all %}
+        {% include "devcast/partials/roadmap.html" %}
+    {% endif %}
+
+    {% if changelog_groups %}
+        {% include "devcast/partials/changelog.html" %}
+    {% endif %}
+
+    <script type="module" src="{% static 'js/devcast.js' %}"></script>
+    {% if page.has_3d %}
+        {# The three.js import map lives in the site header, above this point. #}
+        <script type="module" src="{% static 'js/devcast-model.js' %}"></script>
+    {% endif %}
+</article>
+{% endblock content %}
+
+{% block extra_content %}
+    {# Extraction seam: this is the only devcast template that knows about the #}
+    {# host project's comment app. See DEVCAST_FEEDBACK_TEMPLATE in the design. #}
+    <div class="box page-content">
+        {% show_feedback page.id %}
+    </div>
+{% endblock extra_content %}

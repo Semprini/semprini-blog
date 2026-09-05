@@ -1,0 +1,9 @@
+{% load wagtailimages_tags %}
+<figure class="devcast-gallery">
+    <div class="devcast-gallery__grid">
+        {% for image in value.images %}
+            {% image image fill-480x320 alt=image.title loading="lazy" %}
+        {% endfor %}
+    </div>
+    {% if value.caption %}<figcaption>{{ value.caption }}</figcaption>{% endif %}
+</figure>

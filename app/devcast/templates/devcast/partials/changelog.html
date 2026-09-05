@@ -1,0 +1,64 @@
+{% load i18n wagtailimages_tags wagtailmarkdown %}
+
+{# Native <details> so the history folds without JavaScript and still prints. #}
+<section class="devproject__changelog" id="changelog">
+    <div class="changelog__head">
+        <h2>{% trans "History" %}</h2>
+        <button type="button" class="changelog__toggle-all" data-expanded="false"
+                data-expand-label="{% trans 'Expand all' %}"
+                data-collapse-label="{% trans 'Collapse all' %}" hidden>
+            {% trans "Expand all" %}
+        </button>
+    </div>
+
+    <ol class="changelog">
+        {% for release in changelog_groups %}
+            <li class="changelog__release">
+                <details {% if forloop.first %}open{% endif %}
+                         id="v-{{ release.version|slugify|default:release.released_on|date:'Y-m-d' }}">
+                    <summary class="changelog__summary">
+                        <span class="changelog__version">{% firstof release.version _("Notes") %}</span>
+                        <time class="changelog__date" datetime="{{ release.released_on|date:'c' }}">
+                            {{ release.released_on|date:"j M Y" }}
+                        </time>
+                        <span class="changelog__counts">
+                            {% for count in release.counts %}
+                                <em class="changelog__tag changelog__tag--{{ count.kind }}">
+                                    {{ count.count }} {{ count.label|lower }}
+                                </em>
+                            {% endfor %}
+                        </span>
+                    </summary>
+
+                    <ul class="changelog__entries">
+                        {% for entry in release.entries %}
+                            <li class="changelog__entry">
+                                <span class="changelog__kind changelog__kind--{{ entry.kind }}">{{ entry.get_kind_display }}</span>
+                                <span class="changelog__text">
+                                    {{ entry.summary }}
+                                    {% if entry.commit_url %}
+                                        <a class="changelog__commit" href="{{ entry.commit_url }}" rel="noopener"
+                                           title="{% trans 'View the change' %}"><i class="fa fa-code-fork" aria-hidden="true"></i></a>
+                                    {% endif %}
+                                </span>
+                                {% if entry.detail %}
+                                    <div class="changelog__detail">{{ entry.detail|markdown }}</div>
+                                {% endif %}
+                                {% if entry.image %}
+                                    {% image entry.image max-640x480 as shot %}
+                                    <img class="changelog__image" src="{{ shot.url }}" alt="{{ entry.image.title }}" loading="lazy">
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            </li>
+        {% endfor %}
+    </ol>
+
+    {% if changelog_truncated %}
+        <p class="changelog__more">
+            <a href="?releases=all#changelog">{% blocktrans %}Show all {{ changelog_total }} releases{% endblocktrans %}</a>
+        </p>
+    {% endif %}
+</section>

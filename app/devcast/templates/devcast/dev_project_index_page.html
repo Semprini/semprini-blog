@@ -1,0 +1,30 @@
+{% extends base_template %}
+{% load i18n wagtailcore_tags %}
+
+{% block title %}{{ page.title }}{% endblock title %}
+{% block meta_title %}{% firstof page.seo_title page.title %}{% endblock meta_title %}
+{% block meta_description %}{{ page.search_description }}{% endblock meta_description %}
+
+{% block content %}
+<div class="box page-content devproject-index">
+    <h1>{{ page.title }}</h1>
+    {% if page.intro %}<div class="devproject-index__intro">{{ page.intro|richtext }}</div>{% endif %}
+
+    {% if selected_stack or selected_status %}
+        <p class="devproject-index__filter">
+            {% trans "Filtered" %}
+            {% if selected_stack %}<span>{{ selected_stack }}</span>{% endif %}
+            {% if selected_status %}<span>{{ selected_status }}</span>{% endif %}
+            <a href="{% pageurl page %}">{% trans "Clear" %}</a>
+        </p>
+    {% endif %}
+
+    <div class="devproject-index__grid">
+        {% for project in projects %}
+            {% include "devcast/partials/project_card.html" %}
+        {% empty %}
+            <p>{% trans "Nothing here yet." %}</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock content %}

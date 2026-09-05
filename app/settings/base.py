@@ -24,9 +24,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 INSTALLED_APPS = [
     "semprini",
+    "devcast",
     "search",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
+    # puput's search route records hits via this app's Query model. Without it
+    # installed, Django binds those models to wagtailcore instead and the
+    # tables are never created, so blog search 500s.
+    "wagtail.contrib.search_promotions",
     "wagtail.embeds",
     "wagtail.sites",
     "wagtail.users",
@@ -206,6 +211,13 @@ WAGTAILSEARCH_BACKENDS = {
 WAGTAILADMIN_BASE_URL = "https://semprini.me"
 
 PUPUT_AS_PLUGIN = True
+
+# devcast page types extend puput's EntryPage so they inherit its dated URLs,
+# feeds, archives and comment plumbing. This has to stay put: changing it after
+# the first migration changes the table shape.
+DEVCAST_PAGE_BASE = "puput.models.EntryPage"
+DEVCAST_PUPUT_INTEGRATION = True
+DEVCAST_BASE_TEMPLATE = "puput/base.html"
 
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
 if AWS_STORAGE_BUCKET_NAME:

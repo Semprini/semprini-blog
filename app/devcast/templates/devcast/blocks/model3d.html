@@ -1,0 +1,9 @@
+{# Its own class, not .canvas-container: avatar.js claims the first of those. #}
+<figure class="devcast-model">
+    <div class="devcast-model-viewport"
+         data-devcast-model="{{ value.model.url }}"
+         data-autorotate="{{ value.autorotate|yesno:'true,false' }}">
+        <a href="{{ value.model.url }}" download>{{ value.model.title }}</a>
+    </div>
+    {% if value.caption %}<figcaption>{{ value.caption }}</figcaption>{% endif %}
+</figure>

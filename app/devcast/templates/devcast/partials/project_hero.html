@@ -1,0 +1,49 @@
+{% load i18n wagtailimages_tags %}
+
+<header class="devproject__hero">
+    {% if page.hero_model %}
+        <div class="devcast-model-viewport devproject__hero-model"
+             data-devcast-model="{{ page.hero_model.url }}">
+            <a href="{{ page.hero_model.url }}" download>{{ page.hero_model.title }}</a>
+        </div>
+    {% elif page.hero_image %}
+        {% image page.hero_image fill-1200x420 as hero %}
+        <img class="devproject__hero-image" src="{{ hero.url }}" alt="{{ page.hero_image.title }}">
+    {% endif %}
+
+    <h1 class="devproject__title">{{ page.title }}</h1>
+    {% if page.tagline %}<p class="devproject__tagline">{{ page.tagline }}</p>{% endif %}
+
+    <p class="devproject__meta">
+        <span class="devproject__status devproject__status--{{ page.status }}">{{ page.get_status_display }}</span>
+        {% if page.started_on %}
+            <span class="devproject__since">{% trans "Started" %} {{ page.started_on|date:"M Y" }}</span>
+        {% endif %}
+        {% if page.updated %}
+            <span class="devproject__updated">{% trans "Updated" %} {{ page.updated|date:"j M Y" }}</span>
+        {% endif %}
+    </p>
+
+    {% if page.stack.all %}
+        <ul class="devproject__stack">
+            {% for tag in page.stack.all %}<li>{{ tag }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    <p class="devproject__links">
+        {% if page.demo_url %}
+            <a class="blog_btn devproject__cta" href="{{ page.demo_url }}" rel="noopener">{% trans "Try it" %}</a>
+        {% endif %}
+        {% if page.download_url %}
+            <a class="blog_btn" href="{{ page.download_url }}" rel="noopener">{% trans "Download" %}</a>
+        {% endif %}
+        {% if page.repo_url %}
+            <a class="blog_btn" href="{{ page.repo_url }}" rel="noopener"><i class="fa fa-github" aria-hidden="true"></i> {% trans "Source" %}</a>
+        {% endif %}
+        {% for link in page.links.all %}
+            <a class="blog_btn" href="{{ link.url }}" rel="noopener">
+                {% if link.icon %}<i class="fa fa-{{ link.icon }}" aria-hidden="true"></i> {% endif %}{{ link.label }}
+            </a>
+        {% endfor %}
+    </p>
+</header>

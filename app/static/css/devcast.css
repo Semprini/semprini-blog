@@ -1,0 +1,308 @@
+/*
+ * devcast - dev project pages, changelog and shared content blocks.
+ * Imported from semprini.css so it reaches both base templates.
+ */
+
+/* --- Hero ------------------------------------------------------------- */
+
+.devproject__hero {
+    margin-bottom: 1.5em;
+}
+.devproject__hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 1em;
+}
+.devproject__hero-model {
+    width: 100%;
+    height: 420px;
+    margin-bottom: 1em;
+}
+.devproject__title {
+    margin-bottom: 0.1em;
+}
+.devproject__tagline {
+    color: #CCCCCC;
+    font-size: 1.2em;
+    margin: 0 0 0.6em 0;
+}
+.devproject__meta {
+    color: #999999;
+    font-size: 0.9em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9em;
+    align-items: center;
+}
+
+.devproject__status {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 2px;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #101010;
+    background: var(--main-color);
+}
+.devproject__status--concept,
+.devproject__status--prototype { background: #7A7A7A; }
+.devproject__status--alpha { background: #C1893C; }
+.devproject__status--beta { background: #C7B03A; }
+.devproject__status--released { background: #4FA35B; }
+.devproject__status--maintenance { background: #4A7FA5; }
+.devproject__status--shelved { background: #8A4A4A; color: #EEEEEE; }
+
+.devproject__stack {
+    list-style: none;
+    padding: 0;
+    margin: 0.8em 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+.devproject__stack li {
+    border: 1px solid #444444;
+    color: #BBBBBB;
+    padding: 0.1em 0.5em;
+    font-size: 0.85em;
+}
+
+.devproject__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-top: 1em;
+}
+.devproject__cta {
+    background: var(--main-color);
+    color: #101010;
+}
+
+/* --- Features and roadmap --------------------------------------------- */
+
+.devproject__features ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1em;
+}
+.devproject__features li {
+    border-left: 2px solid var(--main-color);
+    padding-left: 0.8em;
+    color: #BBBBBB;
+}
+.devproject__features strong {
+    display: block;
+    color: #DDDDDD;
+}
+
+.roadmap {
+    list-style: none;
+    padding: 0;
+}
+.roadmap__item {
+    display: flex;
+    gap: 0.8em;
+    align-items: baseline;
+    padding: 0.3em 0;
+    color: #BBBBBB;
+}
+.roadmap__state {
+    flex: 0 0 8em;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: #888888;
+}
+.roadmap__item--done .roadmap__title { color: #7FBF8A; }
+.roadmap__item--in_progress .roadmap__title { color: #D8C46A; }
+.roadmap__item--dropped .roadmap__title {
+    text-decoration: line-through;
+    color: #777777;
+}
+
+/* --- Changelog -------------------------------------------------------- */
+
+.changelog__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1em;
+}
+.changelog__toggle-all {
+    background: none;
+    border: 1px solid #444444;
+    color: #BBBBBB;
+    padding: 0.2em 0.7em;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+.changelog__toggle-all:hover {
+    border-color: var(--main-color);
+}
+
+.changelog {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.changelog__release + .changelog__release {
+    border-top: 1px solid #333333;
+}
+.changelog__summary {
+    cursor: pointer;
+    padding: 0.6em 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.8em;
+}
+.changelog__summary::marker {
+    color: var(--main-color);
+}
+.changelog__version {
+    color: #DDDDDD;
+    font-weight: bold;
+}
+.changelog__date {
+    color: #888888;
+    font-size: 0.85em;
+}
+.changelog__counts {
+    display: flex;
+    gap: 0.4em;
+    margin-left: auto;
+}
+.changelog__tag {
+    font-style: normal;
+    font-size: 0.75em;
+    color: #999999;
+    border: 1px solid #3A3A3A;
+    padding: 0 0.4em;
+}
+
+.changelog__entries {
+    list-style: none;
+    padding: 0 0 0.8em 0;
+    margin: 0;
+}
+.changelog__entry {
+    display: grid;
+    grid-template-columns: 6em 1fr;
+    gap: 0.2em 0.8em;
+    padding: 0.35em 0;
+    color: #BBBBBB;
+}
+.changelog__kind {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    align-self: center;
+    text-align: right;
+    color: #888888;
+}
+.changelog__kind--added { color: #7FBF8A; }
+.changelog__kind--fixed { color: #6FA8C7; }
+.changelog__kind--removed { color: #C77F7F; }
+.changelog__kind--changed { color: #C7B87F; }
+.changelog__detail,
+.changelog__image {
+    grid-column: 2;
+}
+.changelog__image {
+    max-width: 100%;
+    height: auto;
+    margin-top: 0.4em;
+}
+.changelog__commit {
+    margin-left: 0.4em;
+    color: #888888;
+}
+
+/* --- Project index ---------------------------------------------------- */
+
+.devproject-index__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.2em;
+}
+.devproject-card {
+    border-top: 2px solid var(--main-color);
+    background: #1A1A1ACC;
+    padding: 0.8em;
+}
+.devproject-card__image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.devproject-card__title {
+    margin: 0.4em 0 0.2em 0;
+}
+.devproject-card__tagline {
+    color: #AAAAAA;
+    font-size: 0.9em;
+}
+
+/* --- Content blocks --------------------------------------------------- */
+
+.devcast-block {
+    margin: 1.4em 0;
+}
+.devcast-figure img,
+.devcast-gallery img {
+    max-width: 100%;
+    height: auto;
+}
+.devcast-figure figcaption,
+.devcast-gallery figcaption,
+.devcast-video figcaption,
+.devcast-model figcaption {
+    color: #999999;
+    font-size: 0.85em;
+    margin-top: 0.4em;
+}
+.devcast-gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.6em;
+}
+.devcast-video iframe {
+    max-width: 100%;
+}
+.devcast-model-viewport {
+    width: 100%;
+    height: 360px;
+}
+.devcast-model-viewport a {
+    color: #999999;
+    font-size: 0.9em;
+}
+.devcast-code {
+    background: #141414;
+    border-left: 2px solid #3A3A3A;
+    padding: 0.8em;
+    overflow-x: auto;
+    color: #CCCCCC;
+}
+.devcast-callout {
+    border-left: 3px solid var(--main-color);
+    background: #1A1A1A99;
+    padding: 0.6em 0.9em;
+}
+.devcast-callout--warning { border-left-color: #C1893C; }
+.devcast-callout--tip { border-left-color: #4FA35B; }
+.devcast-quote {
+    border-left: 3px solid #444444;
+    padding-left: 1em;
+    color: #CCCCCC;
+    font-style: italic;
+}
+.devcast-quote cite {
+    display: block;
+    font-style: normal;
+    font-size: 0.85em;
+    color: #888888;
+}
