@@ -1,11 +1,13 @@
 import base64
 import datetime
+import tempfile
 from io import BytesIO
 from unittest import mock
 
 from django.core.files.base import ContentFile
 from django.core.files.images import ImageFile
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 from puput.models import BlogPage
 from wagtail.images.models import Image
@@ -23,10 +25,14 @@ from .models import (
     RenderJob,
     Rendition,
     RenditionStatus,
+    SegmentClip,
     Voice,
 )
 from .speech import Clip, EngineError, Segment, segmenter
 from .speech.elevenlabs import words_from_alignment
+
+# Renders write real files; they belong in /tmp, not in the repo's media root.
+TEST_MEDIA = tempfile.mkdtemp(prefix="devcast-tests-")
 
 
 class ProjectPlacementTests(TestCase):
@@ -347,6 +353,7 @@ class LeaseTests(NarrationPageMixin, TestCase):
             self.assertIsNone(narration.claim_job())
 
 
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
 class RenderTests(NarrationPageMixin, TestCase):
     def setUp(self):
         self.make_voice()
@@ -412,6 +419,7 @@ class RenderTests(NarrationPageMixin, TestCase):
         self.assertEqual(rendition.cues[0]["end"], len(self.engine.said))
 
 
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
 class CueTrackFromRenditionTests(NarrationPageMixin, TestCase):
     def setUp(self):
         self.make_voice()
@@ -459,6 +467,229 @@ class VoiceTuningTests(NarrationPageMixin, TestCase):
         before = voice.tuning_rev
         voice.stability = 0.9
         self.assertNotEqual(voice.tuning_rev, before)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class ClipReuseTests(NarrationPageMixin, TestCase):
+    """Editing one section of a published page must not re-buy the article."""
+
+    def setUp(self):
+        self.voice = self.make_voice()
+        self.page = self.make_page()
+
+    def record(self):
+        engine = FakeEngine()
+        rendition = narration.queue_render(self.page, force=True)
+        with mock.patch.object(segmenter, "render", _fake_render):
+            narration.render(rendition, engine=engine)
+        rendition.refresh_from_db()
+        return rendition, engine
+
+    def rewrite_second_section(self):
+        self.page.sections = [
+            {"type": "heading", "value": {"text": "One", "level": "h2"}},
+            {"type": "text", "value": "A rewritten second part."},
+        ]
+        self.page.save()
+
+    def test_only_the_changed_section_is_bought_again(self):
+        _first, engine = self.record()
+        self.assertEqual(len(engine.said), 2)
+
+        self.rewrite_second_section()
+        rendition, engine = self.record()
+
+        self.assertEqual(engine.said, ["A rewritten second part."])
+        self.assertEqual(rendition.billed_chars, len("A rewritten second part."))
+        self.assertEqual(len(rendition.cues), 2)
+        self.assertEqual(rendition.duration_ms, 2000)
+
+    def test_moving_a_section_does_not_re_record_it(self):
+        self.record()
+        self.page.sections = [
+            {"type": "text", "value": "First part."},
+            {"type": "heading", "value": {"text": "One", "level": "h2"}},
+        ]
+        self.page.save()
+
+        rendition, engine = self.record()
+
+        self.assertEqual(engine.said, [])
+        self.assertEqual([cue["kind"] for cue in rendition.cues], ["text", "heading"])
+
+    def test_changing_the_voice_re_records_everything(self):
+        self.record()
+        self.voice.stability = 0.9
+        self.voice.save()
+
+        _rendition, engine = self.record()
+
+        self.assertEqual(len(engine.said), 2)
+
+    def test_a_fully_reused_render_never_touches_the_budget(self):
+        self.record()
+        with override_settings(DEVCAST_MONTHLY_CHAR_BUDGET=1):
+            rendition, engine = self.record()
+
+        self.assertEqual(engine.said, [])
+        self.assertEqual(rendition.billed_chars, 0)
+
+    def test_only_bought_characters_count_against_the_month(self):
+        first, _engine = self.record()
+        self.rewrite_second_section()
+        second, _engine = self.record()
+
+        self.assertEqual(
+            narration.month_char_usage(),
+            first.billed_chars + second.billed_chars,
+        )
+
+    def test_re_recording_by_hand_pays_for_the_page_again(self):
+        self.record()
+        self.assertEqual(narration.forget_clips(self.page), 2)
+
+        _rendition, engine = self.record()
+
+        self.assertEqual(len(engine.said), 2)
+
+    def test_a_failure_halfway_keeps_the_passages_already_paid_for(self):
+        engine = FakeEngine()
+        speak = engine.synthesize
+
+        def flaky(text, voice, **kwargs):
+            if engine.said:
+                raise EngineError("provider exploded")
+            return speak(text, voice, **kwargs)
+
+        engine.synthesize = flaky
+        rendition = narration.queue_render(self.page)
+        with mock.patch.object(segmenter, "render", _fake_render):
+            with self.assertRaises(EngineError):
+                narration.render(rendition, engine=engine)
+
+        self.assertEqual(SegmentClip.objects.count(), 1)
+
+        _rendition, retry = self.record()
+        self.assertEqual(retry.said, ["First part."])
+
+    def test_forgotten_clips_are_bought_again(self):
+        self.record()
+        SegmentClip.objects.update(last_used_at=timezone.now() - datetime.timedelta(days=400))
+
+        self.assertEqual(narration.prune_clips(), 2)
+        self.assertEqual(narration.prune_clips(days=0), 0)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class NarrationStateTests(NarrationPageMixin, TestCase):
+    """What the admin shows an editor about the audio's freshness."""
+
+    def setUp(self):
+        self.voice = self.make_voice()
+        self.page = self.make_page()
+
+    def record(self):
+        rendition = narration.queue_render(self.page, force=True)
+        with mock.patch.object(segmenter, "render", _fake_render):
+            narration.render(rendition, engine=FakeEngine())
+        return rendition
+
+    def test_a_page_that_has_never_been_rendered_says_so(self):
+        state = self.page.narration_state
+        self.assertEqual(state.code, "none")
+        self.assertFalse(state.is_current)
+
+    def test_a_queued_render_is_visible_before_the_worker_runs(self):
+        narration.queue_render(self.page)
+        self.assertEqual(self.page.narration_state.code, "queued")
+
+    def test_rendered_audio_reports_up_to_date(self):
+        self.record()
+        state = self.page.narration_state
+        self.assertEqual(state.code, "current")
+        self.assertTrue(state.is_current)
+
+    def test_an_edit_reports_how_much_would_be_re_recorded(self):
+        self.record()
+        self.page.sections = [
+            {"type": "heading", "value": {"text": "One", "level": "h2"}},
+            {"type": "text", "value": "A rewritten second part."},
+        ]
+
+        state = self.page.narration_state
+
+        self.assertEqual(state.code, "stale")
+        self.assertEqual(state.plan.resynthesized, 1)
+        self.assertEqual(state.plan.reused, 1)
+
+    def test_a_retuned_voice_reports_a_full_re_record(self):
+        self.record()
+        self.voice.stability = 0.9
+        self.voice.save()
+
+        state = self.page.narration_state
+
+        self.assertEqual(state.code, "stale")
+        self.assertEqual(state.plan.resynthesized, 2)
+
+    def test_a_failed_render_reports_the_reason(self):
+        rendition = narration.queue_render(self.page)
+        Rendition.objects.filter(pk=rendition.pk).update(
+            status=RenditionStatus.FAILED, error="provider exploded"
+        )
+
+        state = self.page.narration_state
+
+        self.assertEqual(state.code, "failed")
+        self.assertIn("provider exploded", state.detail)
+
+    def test_narration_switched_off_is_not_reported_as_out_of_date(self):
+        self.page.narration_enabled = False
+        state = self.page.narration_state
+        self.assertEqual(state.code, "disabled")
+        self.assertFalse(state.is_current)
+
+
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class NarrationAdminTests(NarrationPageMixin, TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        self.make_voice()
+        self.page = self.make_page()
+        user = get_user_model().objects.create_superuser(
+            "editor", "editor@example.com", "not-a-real-password"
+        )
+        self.client.force_login(user)
+
+    def test_the_editor_is_told_the_audio_is_missing(self):
+        response = self.client.get(
+            reverse("wagtailadmin_pages:edit", args=[self.page.pk])
+        )
+        self.assertContains(response, "No audio yet")
+
+    def test_the_confirm_page_says_what_it_will_buy(self):
+        response = self.client.get(
+            reverse("devcast_render_narration", args=[self.page.pk])
+        )
+        self.assertContains(response, "2 of 2 sections")
+
+    def test_the_rich_text_body_is_not_offered(self):
+        """It is derived from the Markdown on save, so editing it is a trap."""
+        fields = (
+            AudioEntryPage.get_edit_handler()
+            .get_form_class()
+            .base_fields
+        )
+        self.assertNotIn("body", fields)
+        self.assertIn("markdown_body", fields)
+
+    def test_standard_entries_keep_the_rich_text_body(self):
+        from puput.models import EntryPage
+
+        self.assertIn(
+            "body", EntryPage.get_edit_handler().get_form_class().base_fields
+        )
 
 
 class PruneTests(NarrationPageMixin, TestCase):

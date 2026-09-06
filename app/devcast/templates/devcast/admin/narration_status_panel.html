@@ -1,0 +1,11 @@
+{% load i18n wagtailadmin_tags %}
+<div class="help-block {{ state.css_class }}" data-narration-state="{{ state.code }}">
+    {% if state.is_current %}{% icon name="tick" %}{% else %}{% icon name="warning" %}{% endif %}
+    <div>
+        <strong>{{ state.label }}</strong>
+        {% if state.detail %}<p>{{ state.detail }}</p>{% endif %}
+        {% if can_render and not state.is_current and state.plan.sections %}
+            <p><a href="{{ render_url }}">{% trans "Render narration now" %}</a></p>
+        {% endif %}
+    </div>
+</div>

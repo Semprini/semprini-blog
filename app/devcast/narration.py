@@ -9,16 +9,25 @@ import hashlib
 import re
 import socket
 import unicodedata
+from dataclasses import dataclass, field
 from datetime import timedelta
 
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from . import conf
-from .models import JobState, RenderJob, Rendition, RenditionStatus, Voice
-from .speech import EngineError, Segment, get_engine
+from .models import (
+    JobState,
+    RenderJob,
+    Rendition,
+    RenditionStatus,
+    SegmentClip,
+    Voice,
+)
+from .speech import EngineError, Segment, get_engine, get_engine_class
 from .speech import segmenter
 from .speech.base import truncate_error
 
@@ -58,6 +67,14 @@ def build_script(page):
 def script_hash(segments):
     payload = "\x1f".join(f"{s.block_id}\x1e{normalise(s.text)}" for s in segments)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def text_hash(text):
+    """Identity of a single spoken passage, independent of where it sits.
+
+    Deliberately not keyed on the block id: moving a section must not re-buy it.
+    """
+    return hashlib.sha256(normalise(text).encode("utf-8")).hexdigest()
 
 
 def script_chars(segments):
@@ -112,10 +129,13 @@ def voice_for_page(page):
 def engine_revision(engine_name, voice):
     """Model revision plus voice tuning, so both invalidate old renditions."""
     try:
-        revision = get_engine(engine_name).revision
+        revision = getattr(get_engine_class(engine_name), "revision", engine_name)
     except EngineError:
-        # No credentials here (the web container has none); the revision is
-        # still deterministic from the engine class.
+        revision = engine_name
+    # An engine that is not configured here, or that only reveals its revision
+    # once constructed, is still identified by name - the value has to be
+    # deterministic wherever it is computed, credentials or not.
+    if not isinstance(revision, str):
         revision = engine_name
     return f"{revision}+{voice.tuning_rev}"
 
@@ -198,12 +218,14 @@ def _cancel_superseded(page, keep):
 
 
 def month_char_usage(now=None):
+    """Characters actually bought this month. Reused clips cost nothing, so
+    they are not counted against the budget."""
     now = now or timezone.now()
     start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return (
         Rendition.objects.filter(
             status=RenditionStatus.READY, completed_at__gte=start
-        ).aggregate(total=Sum("char_count"))["total"]
+        ).aggregate(total=Sum("billed_chars"))["total"]
         or 0
     )
 
@@ -253,6 +275,262 @@ def split_text(text, limit):
     return [chunk[:limit] for chunk in chunks if chunk]
 
 
+def split_pieces(segments):
+    """The script as the engine will actually be asked for it."""
+    limit = conf.max_segment_chars()
+    return [
+        Segment(segment.block_id, segment.kind, chunk)
+        for segment in segments
+        for chunk in split_text(segment.text, limit)
+    ]
+
+
+def clip_cache(digests, voice, revision):
+    """``{text_hash: SegmentClip}`` for passages this voice has already read."""
+    if not digests:
+        return {}
+    clips = SegmentClip.objects.filter(
+        voice=voice, engine_rev=revision, text_hash__in=set(digests)
+    ).exclude(audio="")
+    return {clip.text_hash: clip for clip in clips}
+
+
+def store_clip(voice, revision, text, digest, clip):
+    """Bank a freshly synthesized passage so the next publish is cheaper."""
+    record = SegmentClip(
+        voice=voice,
+        engine_rev=revision,
+        text_hash=digest,
+        char_count=len(text),
+        duration_ms=int(round(clip.duration_s * 1000)) if clip.duration_s else None,
+        words=clip.words,
+    )
+    record.audio.save("clip.mp3", ContentFile(clip.audio), save=False)
+    record.save()
+    return record
+
+
+def forget_clips(page, voice=None):
+    """Drop the cached audio for a page's current script, so the next render
+    buys every section again. The 're-record everything' escape hatch."""
+    voice = voice or voice_for_page(page)
+    if voice is None:
+        return 0
+    digests = [text_hash(piece.text) for piece in split_pieces(build_script(page))]
+    removed = 0
+    for clip in SegmentClip.objects.filter(voice=voice, text_hash__in=set(digests)):
+        clip.audio.delete(save=False)
+        clip.delete()
+        removed += 1
+    return removed
+
+
+def prune_clips(days=None):
+    """Forget passages nothing has asked for in a long time. Losing one only
+    costs a re-synthesis, so the cache is allowed to be lossy."""
+    days = conf.clip_cache_days() if days is None else days
+    if not days:
+        return 0
+    cutoff = timezone.now() - timedelta(days=days)
+    removed = 0
+    for clip in SegmentClip.objects.filter(last_used_at__lt=cutoff):
+        clip.audio.delete(save=False)
+        clip.delete()
+        removed += 1
+    return removed
+
+
+@dataclass
+class RenderPlan:
+    """What a render would actually buy, as opposed to what it would produce."""
+
+    sections: int = 0
+    resynthesized: int = 0
+    chars: int = 0
+    billable_chars: int = 0
+    voice: object = None
+
+    @property
+    def reused(self):
+        return self.sections - self.resynthesized
+
+    @property
+    def is_free(self):
+        return self.billable_chars == 0
+
+
+def render_plan(page, voice=None, segments=None):
+    segments = build_script(page) if segments is None else segments
+    voice = voice or voice_for_page(page)
+    plan = RenderPlan(
+        sections=len(segments), chars=script_chars(segments), voice=voice
+    )
+    if not segments or voice is None:
+        plan.resynthesized = plan.sections
+        plan.billable_chars = plan.chars
+        return plan
+
+    pieces = split_pieces(segments)
+    digests = [text_hash(piece.text) for piece in pieces]
+    cached = clip_cache(digests, voice, engine_revision(voice.engine, voice))
+    missing = [
+        (piece, digest)
+        for piece, digest in zip(pieces, digests)
+        if digest not in cached
+    ]
+    plan.resynthesized = len({piece.block_id for piece, _digest in missing})
+    plan.billable_chars = sum(len(piece.text) for piece, _digest in missing)
+    return plan
+
+
+@dataclass
+class NarrationState:
+    """Whether a page's audio still matches the page, phrased for an editor."""
+
+    code: str
+    label: str
+    detail: str = ""
+    rendition: object = None
+    plan: RenderPlan = field(default_factory=RenderPlan)
+
+    CSS = {
+        "current": "help-info",
+        "queued": "help-info",
+        "rendering": "help-info",
+        "stale": "help-warning",
+        "none": "help-warning",
+        "no_voice": "help-warning",
+        "failed": "help-critical",
+    }
+
+    @property
+    def is_current(self):
+        return self.code == "current"
+
+    @property
+    def css_class(self):
+        return self.CSS.get(self.code, "help-info")
+
+
+def narration_state(page):
+    """The freshness of a page's generated audio, for the admin to display."""
+    if not getattr(page, "narration_enabled", False):
+        return NarrationState(
+            "disabled",
+            _("Narration is off"),
+            _("Turn narration on to generate audio for this page."),
+        )
+
+    segments = build_script(page)
+    if not segments:
+        return NarrationState(
+            "empty",
+            _("Nothing to narrate"),
+            _("None of the sections contain anything that can be read aloud."),
+        )
+
+    voice = voice_for_page(page)
+    if voice is None:
+        return NarrationState(
+            "no_voice",
+            _("No voice configured"),
+            _("Add a voice and mark it as the site default before rendering."),
+        )
+
+    plan = render_plan(page, voice=voice, segments=segments)
+    suffix = f"+{voice.tuning_rev}"
+    current = (
+        Rendition.objects.filter(
+            page_id=page.pk,
+            script_hash=script_hash(segments),
+            voice=voice,
+            engine_rev__endswith=suffix,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if current and current.status == RenditionStatus.READY and current.audio:
+        return NarrationState(
+            "current",
+            _("Audio is up to date"),
+            _("%(voice)s, %(sections)s sections, recorded %(when)s.")
+            % {
+                "voice": voice.label,
+                "sections": plan.sections,
+                "when": (current.completed_at or current.created_at).strftime(
+                    "%d %b %Y %H:%M"
+                ),
+            },
+            rendition=current,
+            plan=plan,
+        )
+
+    if current and current.status == RenditionStatus.RENDERING:
+        return NarrationState(
+            "rendering",
+            _("Recording now"),
+            _("%(count)s of %(total)s sections are being synthesized.")
+            % {"count": plan.resynthesized, "total": plan.sections},
+            rendition=current,
+            plan=plan,
+        )
+
+    if current and current.status == RenditionStatus.PENDING:
+        return NarrationState(
+            "queued",
+            _("Queued for recording"),
+            _("%(count)s of %(total)s sections will be synthesized; the rest are reused.")
+            % {"count": plan.resynthesized, "total": plan.sections},
+            rendition=current,
+            plan=plan,
+        )
+
+    if current and current.status == RenditionStatus.FAILED:
+        return NarrationState(
+            "failed",
+            _("Last render failed"),
+            current.error or _("No reason was recorded."),
+            rendition=current,
+            plan=plan,
+        )
+
+    previous = (
+        Rendition.objects.filter(page_id=page.pk, status=RenditionStatus.READY)
+        .exclude(audio="")
+        .order_by("-created_at")
+        .first()
+    )
+    if previous is None:
+        return NarrationState(
+            "none",
+            _("No audio yet"),
+            _("Publishing the page, or rendering it by hand, records all %(total)s sections.")
+            % {"total": plan.sections},
+            plan=plan,
+        )
+
+    voice_changed = previous.voice_id != voice.pk or not previous.engine_rev.endswith(
+        suffix
+    )
+    if voice_changed:
+        detail = _(
+            "The voice has changed, so all %(total)s sections will be re-recorded."
+        ) % {"total": plan.sections}
+    else:
+        detail = _(
+            "%(count)s of %(total)s sections have changed; the other %(reused)s "
+            "are reused from the existing audio."
+        ) % {
+            "count": plan.resynthesized,
+            "total": plan.sections,
+            "reused": plan.reused,
+        }
+    return NarrationState(
+        "stale", _("Audio is out of date"), detail, rendition=previous, plan=plan
+    )
+
+
 def _merge_cues(cues):
     """Sub-segments of one block collapse back into that block's single cue."""
     merged = []
@@ -265,7 +543,10 @@ def _merge_cues(cues):
 
 
 def render(rendition, engine=None):
-    """Synthesize, join, and store. Raises ``EngineError`` on failure."""
+    """Synthesize what is new, reuse what is not, join, and store.
+
+    Raises ``EngineError`` on failure.
+    """
     page = rendition.page.specific if rendition.page_id else None
     if page is None:
         raise EngineError("Rendition has no page")
@@ -276,9 +557,22 @@ def render(rendition, engine=None):
     if script_hash(segments) != rendition.script_hash:
         raise EngineError("Page changed since this rendition was queued")
 
-    budget = conf.monthly_char_budget()
+    voice = rendition.voice
+    pieces = split_pieces(segments)
+    digests = [text_hash(piece.text) for piece in pieces]
+    # The rendition carries the revision it was queued under, so the cache is
+    # keyed on exactly what this recording claims to be.
+    cached = clip_cache(digests, voice, rendition.engine_rev)
+
     chars = script_chars(segments)
-    if budget and month_char_usage() + chars > budget:
+    billable = sum(
+        len(piece.text)
+        for piece, digest in zip(pieces, digests)
+        if digest not in cached
+    )
+
+    budget = conf.monthly_char_budget()
+    if budget and billable and month_char_usage() + billable > budget:
         raise BudgetExceeded(
             f"DEVCAST_MONTHLY_CHAR_BUDGET ({budget}) would be exceeded by this render"
         )
@@ -288,27 +582,46 @@ def render(rendition, engine=None):
     rendition.status = RenditionStatus.RENDERING
     rendition.save(update_fields=["status"])
 
-    limit = conf.max_segment_chars()
-    pieces = [
-        Segment(segment.block_id, segment.kind, chunk)
-        for segment in segments
-        for chunk in split_text(segment.text, limit)
-    ]
-
     # Each piece is generated on its own so cue boundaries stay exact, but it is
     # told what surrounds it, so the article is read as one continuous piece
-    # instead of a stack of cold starts.
-    clips = [
-        engine.synthesize(
+    # instead of a stack of cold starts. A cached piece is reused as it stands:
+    # that context only shapes delivery, and the words are identical.
+    clips = []
+    for index, (piece, digest) in enumerate(zip(pieces, digests)):
+        stored = cached.get(digest)
+        if stored is not None:
+            clips.append(stored.as_clip())
+            continue
+        clip = engine.synthesize(
             piece.text,
-            rendition.voice,
+            voice,
             previous_text=pieces[index - 1].text if index else "",
             next_text=pieces[index + 1].text if index + 1 < len(pieces) else "",
         )
-        for index, piece in enumerate(pieces)
-    ]
+        # Banked immediately: a failure halfway through a long article must not
+        # throw away the passages already paid for.
+        cached[digest] = store_clip(voice, rendition.engine_rev, piece.text, digest, clip)
+        clips.append(clip)
+
+    SegmentClip.objects.filter(
+        pk__in=[clip.pk for clip in cached.values()]
+    ).update(last_used_at=timezone.now())
 
     result = segmenter.render(pieces, clips)
+
+    rendition.audio.save(
+        "narration.mp3", ContentFile(result.audio), save=False
+    )
+    rendition.duration_ms = int(round(result.duration_s * 1000))
+    rendition.cues = _merge_cues(result.cues)
+    rendition.words = result.words
+    rendition.char_count = chars
+    rendition.billed_chars = billable
+    rendition.status = RenditionStatus.READY
+    rendition.error = ""
+    rendition.completed_at = timezone.now()
+    rendition.save()
+    return rendition
 
     rendition.audio.save(
         "narration.mp3", ContentFile(result.audio), save=False

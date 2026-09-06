@@ -8,12 +8,18 @@
     {% include "wagtailadmin/shared/header.html" with title=title subtitle=page.title icon="media" %}
 
     <div class="nice-padding">
+        <div class="help-block {{ state.css_class }}">
+            <strong>{{ state.label }}</strong>
+            {% if state.detail %}<p>{{ state.detail }}</p>{% endif %}
+        </div>
+
         <form method="POST">
             {% csrf_token %}
             <p>
-                {% blocktrans trimmed with count=segment_count chars=char_count %}
-                    This queues {{ count }} sections ({{ chars }} characters) for speech
-                    synthesis. Existing audio for this script is replaced.
+                {% blocktrans trimmed with count=plan.resynthesized total=plan.sections chars=plan.billable_chars %}
+                    This records {{ count }} of {{ total }} sections ({{ chars }} characters
+                    of speech to buy). Unchanged sections are reused from audio that has
+                    already been paid for.
                 {% endblocktrans %}
             </p>
             <p>
@@ -26,6 +32,16 @@
                 {% else %}
                     {% trans "No voice is configured, so nothing can be rendered yet." %}
                 {% endif %}
+            </p>
+            <p>
+                <label for="id_rerecord">
+                    <input type="checkbox" name="rerecord" id="id_rerecord" value="1">
+                    {% blocktrans trimmed with total=plan.sections chars=plan.chars %}
+                        Re-record every section ({{ total }} sections, {{ chars }} characters).
+                        Use this only when the existing delivery is wrong: it pays for the
+                        whole page again.
+                    {% endblocktrans %}
+                </label>
             </p>
             <button type="submit" class="button">{% trans "Queue narration" %}</button>
             <a href="{% url 'wagtailadmin_pages:edit' page.pk %}" class="button button-secondary">{% trans "Cancel" %}</a>

@@ -48,6 +48,9 @@ def words_from_alignment(alignment):
 class ElevenLabsEngine:
     name = "elevenlabs"
     model_id = "eleven_multilingual_v2"
+    # Readable off the class: a process with no API key still has to be able to
+    # tell whether existing audio was made by this model.
+    revision = model_id
     base_url = "https://api.elevenlabs.io"
     output_format = "mp3_44100_128"
     mime = "audio/mpeg"
@@ -61,11 +64,8 @@ class ElevenLabsEngine:
         if not self.api_key:
             raise EngineError("ELEVEN_LABS_API_KEY is not set")
         self.model_id = model_id or self.model_id
+        self.revision = self.model_id
         self.base_url = (base_url or self.base_url).rstrip("/")
-
-    @property
-    def revision(self):
-        return self.model_id
 
     def synthesize(self, text, voice, previous_text="", next_text=""):
         voice_id = (voice.engine_voice_id or "").strip()

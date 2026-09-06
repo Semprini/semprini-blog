@@ -4,6 +4,7 @@ import json
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from modelcluster.contrib.taggit import ClusterTaggableManager
@@ -19,6 +20,7 @@ from wagtailmarkdown.fields import MarkdownField
 
 from . import conf
 from .blocks import NARRATABLE_BLOCKS, SHOWCASE_BLOCKS
+from .panels import NarrationStatusPanel, without_fields
 
 # Which Page class the devcast page types extend is a deployment decision: this
 # site grafts them onto puput's EntryPage so they inherit its URLs, feeds and
@@ -284,11 +286,17 @@ class AudioEntryPage(PageBase):
         help_text=_("Used as the end of the final cue."),
     )
 
-    content_panels = PageBase.content_panels + [
+    # puput's Content panel offers a rich text body beside the Markdown one,
+    # and derives the former from the latter on save. An audio entry is written
+    # in Markdown and sections only, so the rich text editor shows content
+    # nobody may edit - the next save overwrites it. The column stays; only the
+    # panel goes, and standard entries keep both editors.
+    content_panels = without_fields(PageBase.content_panels, "body") + [
         FieldPanel("intro"),
         FieldPanel("sections"),
         MultiFieldPanel(
             [
+                NarrationStatusPanel(),
                 FieldPanel("narration_enabled"),
                 FieldPanel("voice"),
                 FieldPanel("manual_audio"),
@@ -331,6 +339,13 @@ class AudioEntryPage(PageBase):
         if not self.narration_enabled:
             return None, False
         return current_rendition(self)
+
+    @property
+    def narration_state(self):
+        """Whether the generated audio still matches this page."""
+        from .narration import narration_state
+
+        return narration_state(self)
 
     @property
     def cue_track(self):
@@ -612,6 +627,13 @@ class Rendition(models.Model):
     words = models.JSONField(default=list, blank=True)
     visemes = models.JSONField(default=list, blank=True)
     char_count = models.IntegerField(default=0)
+    billed_chars = models.IntegerField(
+        default=0,
+        help_text=_(
+            "Characters actually sent to the engine. Lower than the script "
+            "length when unchanged sections were reused."
+        ),
+    )
     cost_cents = models.IntegerField(null=True, blank=True)
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -646,6 +668,56 @@ class Rendition(models.Model):
             "cues": self.cues,
             "words": self.words,
         }
+
+
+def clip_path(instance, filename):
+    """Content-addressed, with no user-controlled path components. The engine
+    revision is hashed rather than interpolated: it is editable model data."""
+    stamp = hashlib.sha256(instance.engine_rev.encode()).hexdigest()[:8]
+    return f"{conf.audio_prefix()}/clips/{stamp}/{instance.text_hash[:32]}.mp3"
+
+
+class SegmentClip(models.Model):
+    """Audio for one passage, kept so it is never bought twice.
+
+    Editing one section of a published page would otherwise re-synthesize the
+    whole article. Everything that decides how the passage *sounds* is in the
+    key - the words, the voice, the model revision and the voice's tuning - so
+    a hit is always safe, and changing the voice misses every row by design.
+    """
+
+    voice = models.ForeignKey(Voice, on_delete=models.CASCADE, related_name="clips")
+    engine_rev = models.CharField(max_length=64)
+    text_hash = models.CharField(max_length=64, db_index=True)
+    char_count = models.IntegerField(default=0)
+    audio = models.FileField(upload_to=clip_path, blank=True)
+    duration_ms = models.IntegerField(null=True, blank=True)
+    words = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = _("narration clip")
+        ordering = ["-last_used_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voice", "engine_rev", "text_hash"], name="devcast_clip_unique"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.text_hash[:8]} {self.voice_id}"
+
+    def as_clip(self):
+        from .speech import Clip
+
+        with self.audio.open("rb") as handle:
+            audio = handle.read()
+        return Clip(
+            audio=audio,
+            duration_s=(self.duration_ms or 0) / 1000 or None,
+            words=list(self.words or []),
+        )
 
 
 class JobState(models.TextChoices):

@@ -35,6 +35,7 @@ class RenditionViewSet(SnippetViewSet):
         Column("page", label=_("Page")),
         Column("status", label=_("Status")),
         Column("char_count", label=_("Characters")),
+        Column("billed_chars", label=_("Bought")),
         DateColumn("created_at", label=_("Queued")),
     ]
     list_filter = ["status", "voice"]
@@ -44,7 +45,7 @@ class RenditionViewSet(SnippetViewSet):
     inspect_view_enabled = True
     inspect_view_fields = [
         "page", "voice", "engine", "engine_rev", "script_hash",
-        "status", "audio", "duration_ms", "char_count", "error",
+        "status", "audio", "duration_ms", "char_count", "billed_chars", "error",
         "created_at", "completed_at",
     ]
 
@@ -66,6 +67,8 @@ def devcast_admin_urls():
 
 @hooks.register("register_page_listing_more_buttons")
 def render_narration_button(page, user, view_name=None, next_url=None):
+    # Deliberately no freshness label here: working it out costs several
+    # queries per row, and the explorer lists every blog entry.
     if not isinstance(page.specific_deferred, AudioEntryPage):
         return
     if not user.has_perm("devcast.render_narration"):

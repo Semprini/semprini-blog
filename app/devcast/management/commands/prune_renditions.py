@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 
 from devcast import conf
 from devcast.models import Rendition
-from devcast.narration import prune_page
+from devcast.narration import prune_clips, prune_page
 
 
 class Command(BaseCommand):
@@ -17,6 +17,15 @@ class Command(BaseCommand):
             default=None,
             help=f"Default: DEVCAST_KEEP_PREVIOUS_RENDITIONS ({conf.keep_previous_renditions()}).",
         )
+        parser.add_argument(
+            "--clip-days",
+            type=int,
+            default=None,
+            help=(
+                "Forget cached section audio unused for this many days. "
+                f"Default: DEVCAST_CLIP_CACHE_DAYS ({conf.clip_cache_days()})."
+            ),
+        )
 
     def handle(self, *args, **options):
         page_ids = (
@@ -25,4 +34,7 @@ class Command(BaseCommand):
             .distinct()
         )
         removed = sum(prune_page(pk, options["keep_previous"]) for pk in page_ids)
-        self.stdout.write(self.style.SUCCESS(f"{removed} rendition(s) removed"))
+        clips = prune_clips(options["clip_days"])
+        self.stdout.write(
+            self.style.SUCCESS(f"{removed} rendition(s) and {clips} clip(s) removed")
+        )

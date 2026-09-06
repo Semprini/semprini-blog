@@ -8,7 +8,13 @@ from django.views.decorators.http import require_http_methods
 from wagtail.admin import messages
 
 from .models import AudioEntryPage
-from .narration import queue_render, script_chars, voice_for_page
+from .narration import (
+    forget_clips,
+    narration_state,
+    queue_render,
+    render_plan,
+    voice_for_page,
+)
 from .speech import EngineError
 
 
@@ -16,9 +22,12 @@ from .speech import EngineError
 @require_http_methods(["GET", "POST"])
 def render_narration(request, page_id):
     page = get_object_or_404(AudioEntryPage, pk=page_id)
-    segments = page.narration_script()
+    voice = voice_for_page(page)
 
     if request.method == "POST":
+        # Opt-in, because it throws away audio that has already been paid for.
+        if request.POST.get("rerecord"):
+            forget_clips(page, voice=voice)
         try:
             rendition = queue_render(page, force=True)
         except EngineError as exc:
@@ -38,9 +47,9 @@ def render_narration(request, page_id):
         "devcast/admin/confirm_render.html",
         {
             "page": page,
-            "segment_count": len(segments),
-            "char_count": script_chars(segments),
-            "voice": voice_for_page(page),
+            "state": narration_state(page),
+            "plan": render_plan(page, voice=voice),
+            "voice": voice,
             "voice_is_override": page.voice_id is not None,
         },
     )

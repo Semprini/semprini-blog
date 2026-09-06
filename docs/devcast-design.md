@@ -308,6 +308,20 @@ Only **publish** triggers a render, never draft autosave — that alone removes 
 duplicate-spend risk. The admin also gets an explicit "Render narration" button
 (`devcast.render_narration` permission) for forcing a re-render after a voice change.
 
+Change detection is **per section**, not per page. Alongside the whole-script hash, every
+synthesised passage is banked as a `SegmentClip` keyed on `(voice, engine_rev, text_hash)`,
+where `text_hash` covers the words alone — not the block id, so moving a section does not
+re-buy it. A render therefore only sends the passages that are missing from the cache and
+stitches the rest from clips already paid for; `Rendition.billed_chars` records what was
+actually bought, and that is what the monthly budget counts. Because the voice and its tuning
+fingerprint are part of the key, changing the voice misses every clip and re-records the whole
+page, which is the intended behaviour. `forget_clips()` (the "re-record every section"
+checkbox on the confirm screen) is the escape hatch when the delivery, not the text, is wrong.
+
+`narration_state(page)` turns all of this into one line for the editor — up to date, queued,
+recording, out of date with a count of changed sections, failed, or never recorded — rendered
+by `NarrationStatusPanel` in the page's Narration section and on the confirm screen.
+
 ### 5.3 Rendering pipeline
 
 ```mermaid

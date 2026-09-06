@@ -105,3 +105,9 @@ def keep_previous_renditions():
     """Retained superseded renditions per page, so a permalink shared during a
     re-render still has something to play."""
     return _get("KEEP_PREVIOUS_RENDITIONS", 1)
+
+
+def clip_cache_days():
+    """How long a synthesized passage is kept for reuse. Editing one section of
+    a page re-buys only that section for this long; 0 disables expiry."""
+    return _get("CLIP_CACHE_DAYS", 365)
