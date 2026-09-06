@@ -1,5 +1,8 @@
 from collections import Counter
+import hashlib
+import json
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
@@ -256,6 +259,15 @@ class AudioEntryPage(PageBase):
     intro = RichTextField(blank=True)
     sections = StreamField(NARRATABLE_BLOCKS, blank=True, verbose_name=_("sections"))
     narration_enabled = models.BooleanField(default=True)
+    voice = models.ForeignKey(
+        "devcast.Voice",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="pages",
+        verbose_name=_("voice"),
+        help_text=_("Leave empty to use the site's default voice."),
+    )
     manual_audio = models.ForeignKey(
         get_document_model_string(),
         null=True,
@@ -278,6 +290,7 @@ class AudioEntryPage(PageBase):
         MultiFieldPanel(
             [
                 FieldPanel("narration_enabled"),
+                FieldPanel("voice"),
                 FieldPanel("manual_audio"),
                 FieldPanel("audio_duration"),
                 InlinePanel("cues", label=_("Cue")),
@@ -311,15 +324,31 @@ class AudioEntryPage(PageBase):
         return any(block.block_type == "model3d" for block in self.sections)
 
     @property
+    def narration(self):
+        """``(rendition, stale)`` for the generated narration, if any."""
+        from .narration import current_rendition
+
+        if not self.narration_enabled:
+            return None, False
+        return current_rendition(self)
+
+    @property
     def cue_track(self):
         """The cue payload the player consumes.
 
-        Hand-authored cues bind to blocks by position, which is throwaway
-        authoring ergonomics; the JSON that comes out is the same block-id
-        keyed shape the renderer will generate later, so the player never has
-        to change.
+        A generated rendition wins when there is one. Otherwise hand-authored
+        cues bind to blocks by position, which is throwaway authoring
+        ergonomics; the JSON that comes out is the same block-id keyed shape
+        either way, so the player never has to know the difference.
         """
-        if not (self.narration_enabled and self.audio_url):
+        if not self.narration_enabled:
+            return None
+
+        rendition, stale = self.narration
+        if rendition:
+            return rendition.track(stale=stale)
+
+        if not self.audio_url:
             return None
         blocks = list(self.sections)
         cues = list(self.cues.all().order_by("sort_order"))
@@ -341,18 +370,15 @@ class AudioEntryPage(PageBase):
         return {
             "version": 1,
             "audio": {"src": self.audio_url, "duration": self.audio_duration},
+            "stale": False,
             "cues": entries,
         }
 
     def narration_script(self):
-        """[(block_id, kind, text)] - the input the speech engine will read."""
-        script = []
-        for block in self.sections:
-            narrate = getattr(block.block, "narration_text", None)
-            text = narrate(block.value) if narrate else ""
-            if text:
-                script.append((str(block.id), block.block_type, text))
-        return script
+        """The segments the speech engine reads."""
+        from .narration import build_script
+
+        return build_script(self)
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
@@ -406,3 +432,250 @@ class DevProjectIndexPage(Page):
 
             context["blog_page"] = default_blog_page(request)
         return context
+
+
+class Voice(models.Model):
+    """A narrator. One is the default for a site, and a page may override it.
+
+    Deliberately holds **no credentials** - engines read API keys from the
+    environment, so an editor picks a voice, never a key.
+    """
+
+    site = models.ForeignKey(
+        "wagtailcore.Site", on_delete=models.CASCADE, related_name="narration_voices"
+    )
+    key = models.SlugField(
+        max_length=60, help_text=_("Stable identifier used by --voice and in logs.")
+    )
+    label = models.CharField(max_length=120)
+    engine = models.CharField(max_length=32, default="elevenlabs")
+    engine_voice_id = models.CharField(
+        max_length=64, help_text=_("The provider's id for this voice.")
+    )
+
+    # The four sliders on the ElevenLabs voice page, plus speaker boost. Each is
+    # nullable, and empty means "leave the provider's own default alone" rather
+    # than sending a value we invented.
+    speed = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.7), MaxValueValidator(1.2)],
+        help_text=_("0.7 slowest to 1.2 fastest. 1.0 is unmodified. Empty uses 1.0."),
+    )
+    stability = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_(
+            "0.0 to 1.0. Lower is more expressive and more variable between "
+            "renders; higher is steadier but flatter. Empty uses 0.5."
+        ),
+    )
+    similarity_boost = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        verbose_name=_("similarity"),
+        help_text=_(
+            "0.0 to 1.0. How closely to match the original voice. Very high "
+            "values can reproduce artefacts from the source recording. "
+            "Empty uses 0.75."
+        ),
+    )
+    style = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        verbose_name=_("style exaggeration"),
+        help_text=_(
+            "0.0 to 1.0. Amplifies the speaker's delivery. Anything above 0 "
+            "costs latency and can destabilise long passages. Empty uses 0.0."
+        ),
+    )
+    use_speaker_boost = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text=_("Increases similarity to the original speaker. Empty uses on."),
+    )
+    extra_settings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=_(
+            "Escape hatch for engine parameters that have no field above. "
+            "Merged into the request as-is."
+        ),
+    )
+    is_default = models.BooleanField(default=False)
+
+    panels = [
+        FieldPanel("site"),
+        FieldPanel("key"),
+        FieldPanel("label"),
+        FieldPanel("engine"),
+        FieldPanel("engine_voice_id"),
+        MultiFieldPanel(
+            [
+                FieldPanel("speed"),
+                FieldPanel("stability"),
+                FieldPanel("similarity_boost"),
+                FieldPanel("style"),
+                FieldPanel("use_speaker_boost"),
+                FieldPanel("extra_settings"),
+            ],
+            heading=_("Delivery"),
+        ),
+        FieldPanel("is_default"),
+    ]
+
+    class Meta:
+        verbose_name = _("voice")
+        constraints = [
+            models.UniqueConstraint(fields=["site", "key"], name="devcast_voice_key"),
+            models.UniqueConstraint(
+                fields=["site"],
+                condition=models.Q(is_default=True),
+                name="devcast_one_default_voice_per_site",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.label} ({self.key})"
+
+    @property
+    def engine_settings(self):
+        """What actually goes on the wire. Unset sliders are omitted entirely,
+        so the provider's defaults stay the provider's business."""
+        tuning = {
+            "speed": self.speed,
+            "stability": self.stability,
+            "similarity_boost": self.similarity_boost,
+            "style": self.style,
+            "use_speaker_boost": self.use_speaker_boost,
+        }
+        settings = {key: value for key, value in tuning.items() if value is not None}
+        settings.update(self.extra_settings or {})
+        return settings
+
+    @property
+    def tuning_rev(self):
+        """A fingerprint of the delivery settings, so retuning a voice
+        invalidates renditions the same way an engine upgrade does."""
+        payload = json.dumps(
+            self.engine_settings, sort_keys=True, separators=(",", ":")
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()[:8]
+
+
+class RenditionStatus(models.TextChoices):
+    PENDING = "pending", _("Pending")
+    RENDERING = "rendering", _("Rendering")
+    READY = "ready", _("Ready")
+    FAILED = "failed", _("Failed")
+
+
+def narration_path(instance, filename):
+    """Content-addressed, with no user-controlled path components: the object is
+    immutable, so it can be cached forever."""
+    return "{prefix}/{page}/{digest}.mp3".format(
+        prefix=conf.audio_prefix(),
+        page=instance.page_id or "utterance",
+        digest=f"{instance.script_hash[:32]}-{instance.engine_rev[:16]}",
+    )
+
+
+class Rendition(models.Model):
+    """One narration of one script by one voice.
+
+    ``page`` is nullable and points at ``Page`` rather than ``AudioEntryPage``
+    so the same pipeline can later voice standalone avatar utterances.
+    """
+
+    page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="narrations",
+    )
+    voice = models.ForeignKey(Voice, on_delete=models.PROTECT, related_name="renditions")
+    script_hash = models.CharField(max_length=64, db_index=True)
+    engine = models.CharField(max_length=32)
+    engine_rev = models.CharField(
+        max_length=64, help_text=_("Model revision plus voice tuning fingerprint.")
+    )
+    status = models.CharField(
+        max_length=20, choices=RenditionStatus.choices, default=RenditionStatus.PENDING
+    )
+    audio = models.FileField(upload_to=narration_path, blank=True)
+    duration_ms = models.IntegerField(null=True, blank=True)
+    cues = models.JSONField(default=list, blank=True)
+    words = models.JSONField(default=list, blank=True)
+    visemes = models.JSONField(default=list, blank=True)
+    char_count = models.IntegerField(default=0)
+    cost_cents = models.IntegerField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("narration")
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "voice", "script_hash", "engine_rev"],
+                name="devcast_rendition_unique",
+            )
+        ]
+        permissions = [("render_narration", _("Can render narration"))]
+
+    def __str__(self):
+        return f"{self.script_hash[:8]} {self.voice_id} {self.status}"
+
+    @property
+    def duration_s(self):
+        return (self.duration_ms or 0) / 1000
+
+    def track(self, *, stale=False):
+        """The payload the player consumes."""
+        return {
+            "version": 1,
+            "audio": {"src": self.audio.url, "duration": self.duration_s},
+            "voice": self.voice.key,
+            "hash": self.script_hash,
+            "stale": stale,
+            "cues": self.cues,
+            "words": self.words,
+        }
+
+
+class JobState(models.TextChoices):
+    QUEUED = "queued", _("Queued")
+    LEASED = "leased", _("Leased")
+    DONE = "done", _("Done")
+    FAILED = "failed", _("Failed")
+    CANCELLED = "cancelled", _("Cancelled")
+
+
+class RenderJob(models.Model):
+    """Work for the narrator container. Leasing is what keeps a duplicate start
+    from paying twice for the same audio."""
+
+    rendition = models.OneToOneField(
+        Rendition, on_delete=models.CASCADE, related_name="job"
+    )
+    state = models.CharField(
+        max_length=20, choices=JobState.choices, default=JobState.QUEUED, db_index=True
+    )
+    leased_by = models.CharField(max_length=120, blank=True)
+    leased_until = models.DateTimeField(null=True, blank=True)
+    attempts = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("render job")
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.rendition_id} {self.state}"

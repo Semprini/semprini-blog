@@ -19,11 +19,29 @@ from wagtailmarkdown.blocks import MarkdownBlock
 
 _WHITESPACE = re.compile(r"\s+")
 _PREFORMATTED = re.compile(r"<pre\b.*?</pre>", re.DOTALL | re.IGNORECASE)
+# Markdown link *targets* never survive to here - stripping the <a> tag leaves
+# only the link text. What does survive is a URL an author wrote as the visible
+# text, via an autolink or a pasted address.
+_BARE_URL = re.compile(r"(?:https?://|www\.)[^\s<>\"']+", re.IGNORECASE)
+_URL_TAIL = re.compile(r"[.,;:!?)\]]+$")
+
+
+def _speakable_url(match):
+    """A path read character by character is unlistenable, so only the host
+    survives, with its dots said out loud."""
+    url = match.group(0)
+    # Sentence punctuation gets swept up by the URL match; it belongs to the
+    # sentence, not the address.
+    tail = _URL_TAIL.search(url)
+    tail = tail.group(0) if tail else ""
+    host = url[: len(url) - len(tail)].split("//")[-1].split("/")[0].split("?")[0]
+    return host.removeprefix("www.").replace(".", " dot ") + tail
 
 
 def to_speech(value):
     """Collapse arbitrary markup down to a single speakable line."""
     text = html_lib.unescape(strip_tags(str(value or "")))
+    text = _BARE_URL.sub(_speakable_url, text)
     return _WHITESPACE.sub(" ", text).strip()
 
 

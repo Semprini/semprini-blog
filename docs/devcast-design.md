@@ -1,6 +1,6 @@
 # Devcast — design for the devblog and audioblog content types
 
-Status: phases 0-2 built, phases 3+ proposed
+Status: phases 0-3 built, phases 4+ proposed
 Target: semprini.me (Wagtail 7.4 / Django 6.0 / puput as plugin)
 
 ## 1. Goals
@@ -218,9 +218,20 @@ class Voice(models.Model):           # snippet — one active voice per site
     key, label = ...
     engine     = CharField()         # "elevenlabs" | "openai" | "local_xtts"
     engine_voice_id = CharField()    # provider-side id / cloned-speaker id
-    settings   = JSONField(default=dict)      # stability, similarity, speed, style
+    # The provider's own sliders, as real fields rather than hand-typed JSON.
+    # Each is nullable: empty means "leave the provider's default alone".
+    speed             = FloatField(null=True)   # 0.7 – 1.2
+    stability         = FloatField(null=True)   # 0.0 – 1.0
+    similarity_boost  = FloatField(null=True)   # 0.0 – 1.0
+    style             = FloatField(null=True)   # 0.0 – 1.0
+    use_speaker_boost = BooleanField(null=True)
+    extra_settings    = JSONField(default=dict) # engine params with no field
     is_default = BooleanField(default=False)
     # NOTE: no API credentials here — those come from the environment only.
+
+    @property
+    def engine_settings(self):       # unset sliders are omitted, not defaulted
+        ...
 
     class Meta:
         constraints = [UniqueConstraint(fields=["site"], condition=Q(is_default=True),
@@ -256,11 +267,13 @@ class RenderJob(models.Model):
     leased_by, leased_until, attempts, last_error
 ```
 
-**Voice is per site, not per page** (decided). There is one `is_default` `Voice` per `Site`,
-following the pattern [Subtitle](app/semprini/models.py#L11) already uses, so no new
-`INSTALLED_APPS` entry is needed and no per-page voice picker clutters the editor. Resolution is
-`Voice.objects.get(site=Site.find_for_request(...), is_default=True)`, falling back to
-`DEVCAST_DEFAULT_VOICE` for a library consumer with no snippet configured.
+**Voice defaults to the site, with a per-page override** (revised). There is one `is_default`
+`Voice` per `Site`, following the pattern [Subtitle](app/semprini/models.py#L11) already uses, so
+no new `INSTALLED_APPS` entry is needed. `AudioEntryPage.voice` is a nullable FK that an editor
+can set when a particular post wants a different narrator; empty means "whatever the site says",
+so changing the site voice still sweeps every page that never opted out. Resolution is
+`page.voice or Voice.objects.get(site=Site.find_for_request(...), is_default=True)`, falling back
+to `DEVCAST_DEFAULT_VOICE` for a library consumer with no snippet configured.
 
 `Rendition` still carries a `voice` FK, and that FK is part of the uniqueness key. Switching the
 site voice therefore does not destroy anything: old renditions stay on disk, every page renders
@@ -316,6 +329,26 @@ per script segment, measure each clip's duration, then concatenate. Cue boundari
 exact *by construction* and work with **any** engine, including future local models that expose
 no timing API. Engines that do return timings (ElevenLabs `with-timestamps`) additionally
 populate `words` for word-level highlighting and viseme derivation.
+
+**One clip per block, not per sentence** (decided). A block is the unit the reader clicks and the
+unit the highlight moves over, so it is also the unit of synthesis — and it is the *largest* unit
+that keeps cues exact, which matters because a TTS model reads a whole passage with one intonation
+arc and restarts cold on every request. Per-sentence rendering would buy nothing and cost prosody.
+Real content sits far inside the engine ceiling (`eleven_multilingual_v2` accepts 10,000 characters
+per request, and is documented as most stable on long-form input); the converted
+`architecting_data_autonomy` post is 15 blocks with a median of 658 and a maximum of 1,641
+characters, so `DEVCAST_MAX_SEGMENT_CHARS = 5000` never splits it. Splitting only ever happens on
+sentence boundaries, and the pieces are merged back into one cue.
+
+The seam between clips is handled rather than hidden: each generation is sent `previous_text` and
+`next_text` — the neighbouring blocks, which are not spoken — so the model knows where the passage
+sits and the stitched article is read as one continuous piece.
+
+**Links are read as their text, never their URL.** `narration_text()` strips markup before the
+script is built, so a markdown link contributes only its label. The residual case is a URL an
+author wrote *as* the visible text (an autolink or a pasted address); `to_speech()` reduces those
+to the bare host with its dots spoken, because a path read character by character is
+unlistenable.
 
 Engine abstraction:
 
@@ -555,7 +588,8 @@ they ship containing a download link that the viewer replaces only once a model 
 | --- | --- | --- |
 | 0 | `devcast` app skeleton, `apps.py` subpage patch, block library, `EntryBase` indirection, CSS/JS entry points | No user-visible change |
 | 1 | `DevProjectPage`, `ChangelogEntry`, `DevProjectIndexPage`, templates, foldable history | Ships standalone value |
-| 2 | `AudioEntryPage` with **manually uploaded** audio + hand-authored cues in the admin | Proves the player and highlighting without touching TTS || 3 | `Voice` (per site), `Rendition`, `RenderJob`, `render_narrations` + `rerender_narrations` commands, `narrator` service, ElevenLabs engine, publish hook | The automation |
+| 2 | `AudioEntryPage` with **manually uploaded** audio + hand-authored cues in the admin | Proves the player and highlighting without touching TTS |
+| 3 | `Voice` (per site), `Rendition`, `RenderJob`, `render_narrations` + `rerender_narrations` commands, `narrator` service, ElevenLabs engine, publish hook | The automation |
 | 4 | Amplitude lipsync via the existing `speak()` hook | ~40 lines |
 | 5 | Viseme track, avatar module API, `Utterance` snippets | |
 | 6 | `LocalHTTPEngine` + voice-clone sidecar; re-render sweep | Settings change only |
@@ -612,8 +646,8 @@ install then mirrors the existing puput arrangement in
 
 1. **Project pages appear in the main chronological stream**, with a distinct card and an
    `updated` timestamp alongside `date`. See [§2.1](#21-placement-in-the-page-tree).
-2. **One voice per site**, as an `is_default` `Voice` snippet scoped by `Site` — no per-page
-   picker. See [§5.1](#51-models).
+2. **Site-default voice with a per-page override**, as an `is_default` `Voice` snippet scoped by
+   `Site` plus a nullable `AudioEntryPage.voice`. See [§5.1](#51-models).
 3. **Chapter-level permalinks** at `#cue-<block-id>`, with readable slug aliases for headings,
    prime-but-do-not-autoplay behaviour, and `?t=` support. See [§5.5](#55-player-and-highlighting).
 4. **ElevenLabs** for phase 3, using `ELEVEN_LABS_API_KEY` from `.env.prod` and the

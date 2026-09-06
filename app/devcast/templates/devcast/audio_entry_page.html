@@ -21,7 +21,17 @@
 
 {% block content %}
 <article class="box page-content audioentry">
-    <h1 class="audioentry__title">{{ page.title }}</h1>
+    {% include "puput/entry_page_header.html" with entry=page %}
+
+    <section>
+        {% if page.header_image %}
+            <span class="image featured">
+                {% image page.header_image fill-800x240 as header_image %}
+                <img alt="{{ page.header_image.title }}" src="{{ header_image.url }}">
+            </span>
+        {% endif %}
+        {% include "puput/entry_links.html" with entry=page %}
+    </section>
 
     {% if page.intro %}
         <div class="audioentry__intro">{{ page.intro|richtext }}</div>

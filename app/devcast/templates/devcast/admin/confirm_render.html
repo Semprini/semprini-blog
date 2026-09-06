@@ -1,0 +1,34 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% trans "Render narration" %}{% endblock %}
+
+{% block content %}
+    {% trans "Render narration" as title %}
+    {% include "wagtailadmin/shared/header.html" with title=title subtitle=page.title icon="media" %}
+
+    <div class="nice-padding">
+        <form method="POST">
+            {% csrf_token %}
+            <p>
+                {% blocktrans trimmed with count=segment_count chars=char_count %}
+                    This queues {{ count }} sections ({{ chars }} characters) for speech
+                    synthesis. Existing audio for this script is replaced.
+                {% endblocktrans %}
+            </p>
+            <p>
+                {% if voice %}
+                    {% if voice_is_override %}
+                        {% blocktrans trimmed with voice=voice %}Voice: {{ voice }}, chosen for this page.{% endblocktrans %}
+                    {% else %}
+                        {% blocktrans trimmed with voice=voice %}Voice: {{ voice }}, the site default.{% endblocktrans %}
+                    {% endif %}
+                {% else %}
+                    {% trans "No voice is configured, so nothing can be rendered yet." %}
+                {% endif %}
+            </p>
+            <button type="submit" class="button">{% trans "Queue narration" %}</button>
+            <a href="{% url 'wagtailadmin_pages:edit' page.pk %}" class="button button-secondary">{% trans "Cancel" %}</a>
+        </form>
+    </div>
+{% endblock %}

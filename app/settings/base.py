@@ -219,37 +219,57 @@ DEVCAST_PAGE_BASE = "puput.models.EntryPage"
 DEVCAST_PUPUT_INTEGRATION = True
 DEVCAST_BASE_TEMPLATE = "puput/base.html"
 
+# Narration. Credentials are never listed here: the engine reads
+# ELEVEN_LABS_API_KEY from the environment of the narrator container only.
+# The budget is a guard against a runaway re-render, not a target.
+DEVCAST_MONTHLY_CHAR_BUDGET = int(os.environ.get("DEVCAST_MONTHLY_CHAR_BUDGET", 250000))
+DEVCAST_DEFAULT_VOICE = {
+    "key": "semprini-v1",
+    "label": "Semprini",
+    "engine": "elevenlabs",
+    "engine_voice_id": "ev2kMR9ZJZZsemuogS5u",
+    "stability": 0.45,
+    "similarity_boost": 0.8,
+    "style": 0.15,
+}
+
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", None)
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-southeast-2")
 if AWS_STORAGE_BUCKET_NAME:
-    STORAGES = {
-        "default": {
+
+    def _s3(location):
+        return {
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
-            'access_key': os.environ.get("AWS_ACCESS_KEY_ID", None),
-            'secret_key': os.environ.get("AWS_SECRET_ACCESS_KEY", None),
-            'bucket_name': AWS_STORAGE_BUCKET_NAME,
-            'location': 'media',
-            'object_parameters': {'CacheControl': 'max-age=86400'},
-            'default_acl': 'public-read',
-            'file_overwrite': False,
-            'region_name': os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2'),
+                "access_key": os.environ.get("AWS_ACCESS_KEY_ID", None),
+                "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", None),
+                "bucket_name": AWS_STORAGE_BUCKET_NAME,
+                "location": location,
+                "object_parameters": {"CacheControl": "max-age=86400"},
+                "default_acl": "public-read",
+                "file_overwrite": False,
+                "region_name": AWS_S3_REGION_NAME,
+                # Objects are public, so URLs must be plain and cacheable
+                # rather than expiring signed ones, and must keep the exact
+                # path shape that is already published across the site.
+                "querystring_auth": False,
+                "custom_domain": f"s3.{AWS_S3_REGION_NAME}.amazonaws.com/{AWS_STORAGE_BUCKET_NAME}",
             },
-        },
-        "staticfiles": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-            'access_key': os.environ.get("AWS_ACCESS_KEY_ID", None),
-            'secret_key': os.environ.get("AWS_SECRET_ACCESS_KEY", None),
-            'bucket_name': AWS_STORAGE_BUCKET_NAME,
-            'location': 'static',
-            'object_parameters': {'CacheControl': 'max-age=86400'},
-            'default_acl': 'public-read',
-            'file_overwrite': False,
-            'region_name': os.environ.get("AWS_S3_REGION_NAME", 'ap-southeast-2'),
-            },
-        },
-    }
-    
+        }
+
+    STORAGES = {"default": _s3("media")}
+
+    # collectstatic runs during the image build, which has no credentials, so
+    # static stays on the filesystem and is pushed by upload_static_s3.py
+    # afterwards. Opt in only where that is not true.
+    if os.environ.get("AWS_S3_STATICFILES"):
+        STORAGES["staticfiles"] = _s3("static")
+    else:
+        STORAGES["staticfiles"] = {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        }
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

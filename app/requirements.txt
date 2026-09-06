@@ -9,4 +9,6 @@ django-storages
 boto3
 Markdown
 wagtail-markdown
+markdownify
+requests
 mozilla-django-oidc

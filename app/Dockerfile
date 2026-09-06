@@ -15,6 +15,8 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=8000
 
 # Install system packages required by Wagtail and Django.
+# ffmpeg/ffprobe are used only by the narrator worker, which runs this same
+# image, to join per-segment narration clips and measure their durations.
 RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -22,6 +24,7 @@ RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-r
     zlib1g-dev \
     libwebp-dev \
     git \
+    ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 # Install the application server.

@@ -1,18 +1,40 @@
-{% load i18n wagtailimages_tags devcast_tags %}
+{% load i18n wagtailcore_tags social_share devcast_tags %}
 
-<article class="audioentry-card">
-    {% if entry.header_image %}
-        {% image entry.header_image fill-480x270 as thumb %}
-        <img class="audioentry-card__image" src="{{ thumb.url }}" alt="{{ entry.header_image.title }}" loading="lazy">
+{% include "puput/entry_page_header.html" %}
+<section>
+    {% include "puput/entry_links.html" %}
+</section>
+<section class="article audioentry-card">
+    {% if entry.excerpt %}
+        {{ entry.excerpt|richtext }}
+    {% elif entry.intro %}
+        {{ entry.intro|richtext }}
+    {% else %}
+        {{ entry.body|richtext|truncatewords_html:70 }}
     {% endif %}
-    <h3><a href="{% devcast_url entry %}">{{ entry.title }}</a></h3>
-    {% if entry.intro %}<div class="audioentry-card__intro">{{ entry.intro|striptags|truncatewords:40 }}</div>{% endif %}
-    <p class="audioentry-card__meta">
-        {% if entry.manual_audio %}
-            <a class="audioentry-card__play" href="{% devcast_url entry %}">
-                <span aria-hidden="true">&#9654;</span>
-                {% blocktrans with length=entry.audio_duration|duration %}Listen &middot; {{ length }}{% endblocktrans %}
-            </a>
-        {% endif %}
-    </p>
-</article>
+    <div class="row">
+        <ul class="social-share col-md-9">
+            <li class="social-item">
+                {% post_to_facebook post_url '<span><i class="fa fa-facebook" title="tag on facebook"></i></span>' %}
+            </li>
+            <li class="social-item">
+                {% post_to_twitter entry.title post_url '<span><i class="fa fa-twitter" title="tag on twitter"></i></span>' %}
+            </li>
+            <li class="social-item">
+                {% post_to_linkedin post_url '<span><i class="fa fa-linkedin" title="tag on linkedin"></i></span>' %}
+            </li>
+        </ul>
+        <div class="col-md-3">
+            {% with track=entry.cue_track %}
+                <a class="blog_btn continue" href="{% devcast_url entry %}">
+                    {% if track %}
+                        <span aria-hidden="true">&#9654;</span>
+                        {% blocktrans with length=track.audio.duration|duration %}Listen &middot; {{ length }}{% endblocktrans %}
+                    {% else %}
+                        {% trans "Continue reading" %} &raquo;
+                    {% endif %}
+                </a>
+            {% endwith %}
+        </div>
+    </div>
+</section>

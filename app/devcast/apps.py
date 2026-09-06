@@ -7,9 +7,11 @@ class DevcastConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
-        from . import conf
+        from . import conf, signals
 
         if conf.puput_integration():
             from .integrations import puput
 
             puput.install()
+
+        signals.register()
