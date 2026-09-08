@@ -25,14 +25,57 @@ ARM_BLEND = 0.07        # half-width of the torso/arm weight blend band
 RING_N = 24
 ELBOW_STEPS = 6
 FOREARM_STEPS = 5
-PAW_STEPS = 9
+PAW_STEPS = 14
 FOREARM_LEN = 0.36
 PAW_LEN = 0.30
 BEND_DEG = 62.0         # forearm rotates this much forward from straight down
 OUTWARD = 0.18          # sideways component of the forearm direction
-PAW_SCALE = 1.28        # paw radius relative to wrist
-PAW_FLATTEN = 0.82
+PAW_SCALE = 1.45        # paw radius relative to wrist
+PAW_FLATTEN = 0.80
 PAW_DARKEN = 0.72
+
+# Body and legs. Everything is measured against the head's full silhouette width
+# (1.465 units, ears included - that is what the eye compares the body against).
+# The belly reaches 1.10 units, half again the 0.73 chest it grows out of, and
+# the lower half is kept short: 1.17 units from the cut at the elbows down to
+# the soles. What makes that read chubby-cute rather than just fat is that
+# nothing steps - the chest eases out into the belly, the belly tucks back under
+# to the hips, and the legs stay at about two fifths of the belly's width with a
+# gap between them, so a round middle sits on small stubby legs.
+BODY_RING_N = 32
+BODY_STEPS = 18
+BODY_BOT_Z = -1.86      # underside of the pelvis; the legs carry on below it
+BELLY_U = 0.45          # fraction of the way down the body where it is widest
+BELLY_BULGE = 1.50      # belly width relative to the chest at the cut
+BELLY_FWD = 0.12        # how far the pot belly leans forward (-y)
+BELLY_DEEP = 1.10       # extra front-to-back scale at the belly
+HIP_W = 0.50            # pelvis width at the very bottom, same scale as the bulge
+
+LEG_RING_N = 20
+LEG_STEPS = 16
+LEG_TOP_Z = -1.45       # first ring, buried inside the pelvis
+LEG_ROOT = 0.55         # how far the buried rings are pulled in, so no rim shows
+LEG_BOT_Z = -2.17       # sole
+LEG_R = 0.205           # two fifths of the belly's width; wider and the pair reads as a slab
+LEG_X = 0.22            # hip offset from the body centre line; leaves a gap between the legs
+LEG_SPLAY = 0.035       # extra offset by the ankle, so the legs open downwards
+LEG_TAPER = 0.12
+FOOT_FLARE = 0.18       # the foot swells back out past the ankle, so it reads as a paw
+SOLE_U = 0.80           # where the foot starts rounding into the sole
+SOLE_FLAT = 0.44        # width left on the flat of the sole
+FOOT_FWD = 0.14         # how far the foot steps forward of the leg
+FOOT_DEEP = 0.30        # extra front-to-back scale at the toe
+
+# Paw / foot pads: a lighter oval on the palm and sole, with toe pads at the
+# leading edge where they still catch the light in a front view. Each entry is
+# (position along the limb, angle around the ring in degrees, and the half
+# extents of the pad in those two coordinates).
+PAD_TINT = Vector((0.50, 0.33, 0.21))   # linear warm tan
+PAD_MIX = 0.72          # how far the fur colour moves towards the tint
+PAD_LIGHTEN = 1.55
+PAD_RAISE = 0.055       # radial swell, as a fraction of the local radius
+PAW_PADS = [(0.50, 90, 0.26, 62)] + [(0.80, 90 + k, 0.14, 21) for k in (-63, -21, 21, 63)]
+FOOT_PADS = [(0.85, 270 + k, 0.055, 20) for k in (-48, -16, 16, 48)]
 
 # Face features (coordinates from data/blender_scripts/face_data.py analysis)
 EYE = {  # painted-on eye patches on the head dome: x0, x1, z_top, z_bot
@@ -180,14 +223,18 @@ def stump_centre(side):
     xs = [v.x for v in vs]; ys = [v.y for v in vs]
     return Vector(((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, 0))
 
-def radial_profile(centre, z, n):
-    """Return (radii, colours) for n angles around centre at height z."""
+def radial_profile(centre, z, n, max_dist=0.32, lo=0.75, hi=1.25, passes=2):
+    """Return (radii, colours) for n angles around centre at height z.
+
+    The mesh is a pile of overlapping shells, so a ray can slip through a gap
+    and land on something further out (the torso rays reach the arms). Clamping
+    each radius to a band around the median throws those away."""
     radii, cols = [], []
     for i in range(n):
         a = 2 * math.pi * i / n
         d = Vector((math.cos(a), math.sin(a), 0))
         o = Vector((centre.x, centre.y, z))
-        loc, nrm, fidx, dist = bvh.ray_cast(o, d, 0.32)
+        loc, nrm, fidx, dist = bvh.ray_cast(o, d, max_dist)
         if loc is None:
             radii.append(None); cols.append(None)
         else:
@@ -195,15 +242,15 @@ def radial_profile(centre, z, n):
             # sample colour just above the cut so the new geometry matches the visible edge
             c = None
             for zc in (Z_CUT + 0.01, Z_CUT + 0.03, Z_CUT + 0.05):
-                l2, _, f2, _ = bvh.ray_cast(Vector((centre.x, centre.y, zc)), d, 0.32)
+                l2, _, f2, _ = bvh.ray_cast(Vector((centre.x, centre.y, zc)), d, max_dist)
                 if l2 is not None:
                     c = colour_at_hit(l2, f2) if c is None else (c + colour_at_hit(l2, f2))
             cols.append(c / 3 if c is not None else colour_at_hit(loc, fidx))
     # fill gaps
     valid = [r for r in radii if r is not None]
     med = sorted(valid)[len(valid) // 2]
-    radii = [min(max(r, med * 0.75), med * 1.25) if r is not None else med for r in radii]
-    radii = circular_smooth(radii)
+    radii = [min(max(r, med * lo), med * hi) if r is not None else med for r in radii]
+    radii = circular_smooth(radii, passes)
     mean_col = sum((c for c in cols if c is not None), Vector()) / max(1, sum(1 for c in cols if c is not None))
     cols = [c if c is not None else mean_col for c in cols]
     cols = [(cols[i - 1] + 2 * cols[i] + cols[(i + 1) % n]) / 4 for i in range(n)]
@@ -214,9 +261,12 @@ def radial_profile(centre, z, n):
 # along the arm (one texel row per ring), left half for .L and right half for .R.
 TEX_ROWS_ARM = 2 + ELBOW_STEPS + FOREARM_STEPS + PAW_STEPS + 1
 LID_ROW = {"L": TEX_ROWS_ARM, "R": TEX_ROWS_ARM + 2}   # two rows per lid: top / bottom shade
-TEX_ROWS = TEX_ROWS_ARM + 4
+BODY_ROW0 = TEX_ROWS_ARM + 4            # body rings; one ring per row, columns 0..BODY_RING_N
+LEG_ROW0 = BODY_ROW0 + BODY_STEPS + 3   # leg rings, .L in the left half and .R in the right
+TEX_ROWS = LEG_ROW0 + LEG_STEPS + 2
 SIDE_W = RING_N + 1                     # +1: duplicated seam column
-ARM_TEX_W, ARM_TEX_H = SIDE_W * 2, TEX_ROWS
+ARM_TEX_W, ARM_TEX_H = max(SIDE_W * 2, BODY_RING_N + 1), TEX_ROWS
+assert LEG_RING_N + 1 <= SIDE_W, "leg rings must fit in one half of the texture"
 arm_px = [0.0] * (ARM_TEX_W * ARM_TEX_H * 4)     # linear RGBA floats, row 0 = bottom
 ARM_TEX_PATH = os.path.splitext(OUT_BLEND)[0] + "_arms.png"
 
@@ -275,40 +325,93 @@ MOUTH_CAVITY_MAT = flat_material("mouth_cavity", (0.16, 0.025, 0.02), 0.8)
 MOUTH_TONGUE_MAT = flat_material("mouth_tongue", (0.75, 0.22, 0.25), 0.45)
 MOUTH_TEETH_MAT = flat_material("mouth_teeth", (0.92, 0.9, 0.82), 0.35)
 
-ring_uv = {}            # BMVert -> (u_index, v_row) ; u_index in 0..RING_N
+ring_uv = {}            # BMVert -> (x0, local index around the ring, row, ring size)
 joints = {}             # side -> dict(shoulder, elbow, wrist, tip)
 
-def add_ring(centre, frame_x, frame_y, radii, scale_x, scale_y, cols, weights, side, row):
+def half_x0(side):
+    """Column where a limb's texel run starts: .L in the left half, .R in the right."""
+    return 0 if side == "L" else SIDE_W
+
+def add_ring(centre, frame_x, frame_y, radii, scale_x, scale_y, cols, weights, x0, row, n=RING_N):
     verts = []
-    x0 = 0 if side == "L" else SIDE_W
-    for i in range(RING_N):
-        a = 2 * math.pi * i / RING_N
+    for i in range(n):
+        a = 2 * math.pi * i / n
         off = frame_x * (math.cos(a) * radii[i] * scale_x) + frame_y * (math.sin(a) * radii[i] * scale_y)
         v = bm.verts.new(centre + off)
         new_vert_weights[v] = weights
-        ring_uv[v] = (x0 + i, row)
+        ring_uv[v] = (x0, i, row, n)
         put_texel(x0 + i, row, cols[i])
         verts.append(v)
-    put_texel(x0 + RING_N, row, cols[0])
+    put_texel(x0 + n, row, cols[0])
     return verts
 
+def _set_uv(loop, x0, local, row):
+    loop[uv_layer].uv = ((x0 + local + 0.5) / ARM_TEX_W, (row + 0.5) / ARM_TEX_H)
+
 def bridge(r0, r1):
+    n = len(r0)
     faces = []
-    for i in range(RING_N):
-        f = bm.faces.new((r0[i], r0[(i + 1) % RING_N], r1[(i + 1) % RING_N], r1[i]))
+    for i in range(n):
+        f = bm.faces.new((r0[i], r0[(i + 1) % n], r1[(i + 1) % n], r1[i]))
         f.material_index = ARM_MAT_INDEX
         f.smooth = True
-        # the i == RING_N-1 quad wraps around the seam; let its far edge use u of the
+        # the i == n-1 quad wraps around the seam; let its far edge use u of the
         # next texel instead of wrapping to u=0 (the texel row is periodic anyway)
         for l in f.loops:
-            x, row = ring_uv[l.vert]
-            side_x0 = (x // SIDE_W) * SIDE_W
-            local = x - side_x0
-            if i == RING_N - 1 and local == 0:
-                local = RING_N
-            l[uv_layer].uv = ((side_x0 + local + 0.5) / ARM_TEX_W, (row + 0.5) / ARM_TEX_H)
+            x0, local, row, _ = ring_uv[l.vert]
+            if i == n - 1 and local == 0:
+                local = n
+            _set_uv(l, x0, local, row)
         faces.append(f)
     return faces
+
+def cap_fan(ring, centre_pt, weights, cols, x0, row):
+    """Close a ring with a triangle fan to a single vertex, on its own texel row."""
+    n = len(ring)
+    cv = bm.verts.new(centre_pt)
+    new_vert_weights[cv] = weights
+    ring_uv[cv] = (x0, 0, row, n)
+    for i in range(n + 1):
+        put_texel(x0 + i, row, cols[i % n])
+    for i in range(n):
+        f = bm.faces.new((ring[i], ring[(i + 1) % n], cv))
+        f.material_index = ARM_MAT_INDEX
+        f.smooth = True
+        for l in f.loops:
+            rx0, local, rrow, _ = ring_uv[l.vert]
+            if l.vert is cv:
+                local, rrow = i + 0.5, row
+            elif i == n - 1 and local == 0:
+                local = n
+            _set_uv(l, rx0, local, rrow)
+    return cv
+
+def pad_field(t, i, n, pads):
+    """How strongly ring vertex i (of n) at position t along the limb sits on a pad.
+
+    Pads are ellipses in (t, angle) with a soft rim, so they tint and swell the
+    fur smoothly instead of stamping a hard edge onto a coarse ring."""
+    a = 360.0 * i / n
+    best = 0.0
+    for tc, ac, t_half, a_half in pads:
+        da = (a - ac + 180.0) % 360.0 - 180.0
+        d = math.hypot((t - tc) / t_half, da / a_half)
+        best = max(best, smoothstep((1.0 - d) / 0.45))
+    return best
+
+def pad_colour(c):
+    c = c.lerp(PAD_TINT, PAD_MIX) * PAD_LIGHTEN
+    return Vector((min(c.x, 1.0), min(c.y, 1.0), min(c.z, 1.0)))
+
+def apply_pads(radii, cols, t, pads):
+    """Return (radii, colours) for one ring with the pads blended in."""
+    n = len(radii)
+    out_r, out_c = [], []
+    for i in range(n):
+        w = pad_field(t, i, n, pads)
+        out_r.append(radii[i] * (1.0 + PAD_RAISE * w))
+        out_c.append(cols[i].lerp(pad_colour(cols[i]), w))
+    return out_r, out_c
 
 def build_arm(side):
     s = 1.0 if side == "L" else -1.0
@@ -330,11 +433,12 @@ def build_arm(side):
 
     rings = []
     row = 0
+    x0 = half_x0(side)
     # start inside the existing stump so the seam is hidden
     rings.append(add_ring(Vector((centre.x, centre.y, Z_CUT + 0.07)), ex, ey, [r * 0.965 for r in radii], 1, 1, cols,
-                          {up_arm: 1.0}, side, row)); row += 1
+                          {up_arm: 1.0}, x0, row)); row += 1
     rings.append(add_ring(Vector((centre.x, centre.y, Z_CUT + 0.02)), ex, ey, [r * 0.985 for r in radii], 1, 1, cols,
-                          {up_arm: 1.0}, side, row)); row += 1
+                          {up_arm: 1.0}, x0, row)); row += 1
 
     # elbow: circular arc of radius R_b bending from 'down' to fdir
     R_b = r_mean * 1.15
@@ -346,7 +450,7 @@ def build_arm(side):
         p = Cb + rot @ (-m * R_b)
         t = k / ELBOW_STEPS
         w_fore = smoothstep((t - 0.15) / 0.7)
-        rings.append(add_ring(p, rot @ ex, rot @ ey, radii, 1, 1, cols, {up_arm: 1 - w_fore, fore: w_fore}, side, row))
+        rings.append(add_ring(p, rot @ ex, rot @ ey, radii, 1, 1, cols, {up_arm: 1 - w_fore, fore: w_fore}, x0, row))
         row += 1
     rot_f = Matrix.Rotation(beta, 3, axis)
     fx, fy = rot_f @ ex, rot_f @ ey
@@ -358,60 +462,173 @@ def build_arm(side):
         p = elbow_end + fdir * (FOREARM_LEN * t)
         taper = 1.0 - 0.13 * t
         w_hand = smoothstep((t - 0.75) / 0.25) * 0.5
-        rings.append(add_ring(p, fx, fy, radii, taper, taper, cols, {fore: 1 - w_hand, hand: w_hand}, side, row))
+        rings.append(add_ring(p, fx, fy, radii, taper, taper, cols, {fore: 1 - w_hand, hand: w_hand}, x0, row))
         row += 1
     wrist = elbow_end + fdir * FOREARM_LEN
     r_wrist = r_mean * 0.87
 
-    # paw: rounded mitten, darker
+    # Paw: a teddy mitten - swells out of the wrist, holds full width through
+    # the middle and rounds off at the tip, flattened across the palm. The
+    # palm is +fy (the forearm reaches down and forward, so the palm faces back
+    # and down); pads sit there and wrap onto the tip.
     paw_cols = [c * PAW_DARKEN for c in cols]
     circ = [r_wrist] * RING_N
     last_ring = None
-    for k in range(1, PAW_STEPS + 1):
-        t = k / PAW_STEPS
-        # bulge then hemispherical close
-        if t < 0.45:
-            sc = 1.0 + (PAW_SCALE - 1.0) * smoothstep(t / 0.45)
-        else:
-            u = (t - 0.45) / 0.55
-            sc = PAW_SCALE * math.sqrt(max(0.0, 1 - u * u))
-        sc = max(sc, 0.06)
+    # Sampling the closing dome at even t would bunch every ring at full width
+    # and then collapse the last one onto the tip, leaving a cone; step it by
+    # angle instead so the rings stay evenly spaced right up to the pole.
+    n_swell, n_barrel = 4, 3
+    n_dome = PAW_STEPS - n_swell - n_barrel
+    assert n_dome >= 3, "PAW_STEPS leaves too few rings for the tip"
+    profile = [(0.34 * k / n_swell, 1.0 + (PAW_SCALE - 1.0) * smoothstep(k / n_swell))
+               for k in range(1, n_swell + 1)]
+    profile += [(0.34 + 0.36 * k / n_barrel, PAW_SCALE) for k in range(1, n_barrel + 1)]
+    profile += [(0.70 + 0.30 * math.sin(phi), PAW_SCALE * math.cos(phi))
+                for phi in (0.5 * math.pi * k / (n_dome + 1) for k in range(1, n_dome + 1))]
+    for t, sc in profile:
         blend = smoothstep(t / 0.3)
         c_here = [cols[i].lerp(paw_cols[i], blend) for i in range(RING_N)]
+        r_here, c_here = apply_pads(circ, c_here, t, PAW_PADS)
         p = wrist + fdir * (PAW_LEN * t)
         w_hand = 0.5 + 0.5 * smoothstep(t / 0.3)
-        ring = add_ring(p, fx, fy, circ, sc, sc * PAW_FLATTEN, c_here, {fore: 1 - w_hand, hand: w_hand}, side, row)
+        ring = add_ring(p, fx, fy, r_here, sc, sc * PAW_FLATTEN, c_here,
+                        {fore: 1 - w_hand, hand: w_hand}, x0, row)
         row += 1
         rings.append(ring)
         last_ring = ring
-    tip = wrist + fdir * (PAW_LEN * 1.02)
-    tip_v = bm.verts.new(tip)
-    new_vert_weights[tip_v] = {hand: 1.0}
-    x0 = 0 if side == "L" else SIDE_W
-    for i in range(RING_N + 1):
-        put_texel(x0 + i, row, paw_cols[i % RING_N])
-    ring_uv[tip_v] = (x0, row)
+    tip = wrist + fdir * PAW_LEN
 
     for a, b in zip(rings, rings[1:]):
         bridge(a, b)
-    for i in range(RING_N):
-        f = bm.faces.new((last_ring[i], last_ring[(i + 1) % RING_N], tip_v))
-        f.material_index = ARM_MAT_INDEX
-        f.smooth = True
-        for l in f.loops:
-            x, r_ = ring_uv[l.vert]
-            local = x - x0
-            if l.vert is tip_v:
-                local = i + 0.5
-            elif i == RING_N - 1 and local == 0:
-                local = RING_N
-            l[uv_layer].uv = ((x0 + local + 0.5) / ARM_TEX_W, (r_ + 0.5) / ARM_TEX_H)
+    cap_fan(last_ring, tip, {hand: 1.0}, paw_cols, x0, row)
 
     shoulder = Vector((centre.x - s * 0.02, centre.y, Z_SHOULDER))
     joints[side] = dict(shoulder=shoulder, elbow=elbow, wrist=wrist, tip=tip, fdir=fdir, r=r_mean)
 
+def torso_centre():
+    """Centre of the bottom cut, arms excluded. The arms add vertices that fall
+    inside the torso's x band, so this has to be measured before they are built."""
+    vs = [v.co for v in bm.verts
+          if v.co.z < Z_CUT + 0.05 and ARM_X_MIN["R"] < v.co.x < ARM_X_MIN["L"]]
+    xs = [v.x for v in vs]; ys = [v.y for v in vs]
+    return Vector(((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, 0))
+
+BODY_C = torso_centre()
+
 build_arm("L")
 build_arm("R")
+
+# ---------------------------------------------------------------- body + legs
+# The bust ends in a flat cut at Z_CUT, so the body carries on from there the
+# way the arms do: rings that start just inside the old shell and widen out of
+# it, burying the rim. The legs are separate tubes rooted inside the pelvis -
+# the model is a pile of overlapping shells anyway, so an intersection is
+# cheaper and steadier than splitting one ring into two.
+
+def body_profile(z):
+    """(width scale, depth scale, forward lean) of the cut cross-section at z.
+
+    One curve rather than a stack of swell / hip / cap factors: those overlapped
+    and cancelled, which straightened the sides and left a corner where the
+    pelvis began - a sack hung on the chest. Here the chest eases out to the
+    belly's widest point (smoothstep, so it leaves the cut flat and arrives
+    flat), then a quarter ellipse tucks it back under to the hips: flat where it
+    meets the belly, vertical at the bottom, so the underside domes off."""
+    u = (Z_CUT - z) / (Z_CUT - BODY_BOT_Z)          # 0 at the cut, 1 under the pelvis
+    if u <= BELLY_U:
+        s = 1.0 + (BELLY_BULGE - 1.0) * smoothstep(u / BELLY_U)
+    else:
+        t = (u - BELLY_U) / (1.0 - BELLY_U)
+        s = HIP_W + (BELLY_BULGE - HIP_W) * math.sqrt(max(0.0, 1.0 - t * t))
+    belly = max(0.0, (s - 1.0) / (BELLY_BULGE - 1.0))   # 0 at the chest, 1 at the widest
+    return s, s * (1.0 + (BELLY_DEEP - 1.0) * belly), BELLY_FWD * belly
+
+def hips_weight(z):
+    """Torso -> Hips handover, so the breathing torso does not stretch the legs."""
+    return smoothstep((Z_CUT - 0.02 - z) / 0.30)
+
+def build_body():
+    radii, cols = radial_profile(BODY_C, Z_CUT + 0.03, BODY_RING_N,
+                                 max_dist=0.62, lo=0.82, hi=1.16, passes=3)
+    r_mean = sum(radii) / len(radii)
+    print(f"body: centre=({BODY_C.x:.3f},{BODY_C.y:.3f}) r_mean={r_mean:.3f} "
+          f"r_min={min(radii):.3f} r_max={max(radii):.3f} "
+          f"belly_width={2 * r_mean * BELLY_BULGE:.3f} col_mean={sum(cols, Vector()) / len(cols)}")
+
+    ex, ey = Vector((1, 0, 0)), Vector((0, 1, 0))
+    rings, row = [], BODY_ROW0
+    for z, extra in ((Z_CUT + 0.07, 0.955), (Z_CUT + 0.015, 1.005)):
+        w = hips_weight(z)
+        rings.append(add_ring(Vector((BODY_C.x, BODY_C.y, z)), ex, ey, radii, extra, extra, cols,
+                              {"Torso": 1 - w, "Hips": w}, 0, row, BODY_RING_N))
+        row += 1
+
+    bot_cols = cols
+    for k in range(1, BODY_STEPS + 1):
+        u = k / BODY_STEPS
+        z = Z_CUT + (BODY_BOT_Z - Z_CUT) * u
+        sx, sy, fwd = body_profile(z)
+        w = hips_weight(z)
+        shade = 1.0 - 0.12 * smoothstep((u - 0.55) / 0.5)      # the underside sits in shadow
+        bot_cols = [c * shade for c in cols]
+        rings.append(add_ring(Vector((BODY_C.x, BODY_C.y - fwd, z)), ex, ey, radii, sx, sy, bot_cols,
+                              {"Torso": 1 - w, "Hips": w}, 0, row, BODY_RING_N))
+        row += 1
+
+    for a, b in zip(rings, rings[1:]):
+        bridge(a, b)
+    cap_fan(rings[-1], Vector((BODY_C.x, BODY_C.y - body_profile(BODY_BOT_Z)[2], BODY_BOT_Z - 0.04)),
+            {"Hips": 1.0}, bot_cols, 0, row)
+    return bot_cols
+
+def build_leg(side, base_cols):
+    s = 1.0 if side == "L" else -1.0
+    thigh, shin, foot = f"Thigh.{side}", f"Shin.{side}", f"Foot.{side}"
+    x0 = half_x0(side)
+    ex, ey = Vector((1, 0, 0)), Vector((0, 1, 0))
+    n = LEG_RING_N
+    m = len(base_cols)
+    cols = [base_cols[int(i * m / n) % m] for i in range(n)]
+    foot_cols = [c * PAW_DARKEN for c in cols]
+    sole_cols = [pad_colour(c) for c in foot_cols]
+    circ = [LEG_R] * n
+    rings, row = [], LEG_ROW0
+    leg_len = LEG_BOT_Z - LEG_TOP_Z
+    for k in range(LEG_STEPS + 1):
+        v = k / LEG_STEPS
+        z = LEG_TOP_Z + leg_len * v
+        toe = smoothstep((v - 0.60) / 0.40)
+        flare = smoothstep((v - 0.55) / 0.28)
+        # the top rings are pulled in so their rim cannot break the belly's surface
+        root = LEG_ROOT + (1.0 - LEG_ROOT) * smoothstep(v / 0.20)
+        taper = (root * (1.0 - LEG_TAPER * smoothstep((v - 0.15) / 0.55))
+                 * (1.0 + FOOT_FLARE * flare))
+        arc = 1.0 if v < SOLE_U else math.sqrt(max(0.0, 1 - ((v - SOLE_U) / (1 - SOLE_U)) ** 2))
+        sole = SOLE_FLAT + (1.0 - SOLE_FLAT) * arc
+        blend = 0.7 * smoothstep((v - 0.62) / 0.34)
+        c_here = [cols[i].lerp(foot_cols[i], blend) for i in range(n)]
+        r_here, c_here = apply_pads(circ, c_here, v, FOOT_PADS)
+        # the whole flat of the sole is one pad: colouring only the cap left the
+        # fan's rim dark, which read as spokes rather than a pad
+        sp = smoothstep((v - 0.90) / 0.10)
+        c_here = [c_here[i].lerp(sole_cols[i], sp) for i in range(n)]
+        w_shin = smoothstep((v - 0.35) / 0.35)
+        w_foot = smoothstep((v - 0.72) / 0.25)
+        rings.append(add_ring(
+            Vector((BODY_C.x + s * (LEG_X + LEG_SPLAY * v), BODY_C.y - FOOT_FWD * toe, z)), ex, ey,
+            r_here, taper * sole, taper * sole * (1.0 + FOOT_DEEP * toe), c_here,
+            {thigh: 1 - w_shin, shin: w_shin - w_foot, foot: w_foot}, x0, row, n))
+        row += 1
+
+    for a, b in zip(rings, rings[1:]):
+        bridge(a, b)
+    cap_fan(rings[-1],
+            Vector((BODY_C.x + s * (LEG_X + LEG_SPLAY), BODY_C.y - FOOT_FWD, LEG_BOT_Z - 0.012)),
+            {foot: 1.0}, sole_cols, x0, row)
+
+body_cols = build_body()
+build_leg("L", body_cols)
+build_leg("R", body_cols)
 
 def conformal_patch(xc, zc, half_w, half_h, nx, nz, inset, weights, uv_of, y_clamp=0.05, mat_index=None):
     """Elliptical grid of verts projected onto the surface from the front (-y) and
@@ -574,7 +791,8 @@ texn.image = arm_img
 print("arm texture", ARM_TEX_PATH, arm_img.size[:])
 
 # ---------------------------------------------------------------- vertex groups (weights)
-bone_names = ["Torso", "Head", "UpperArm.L", "ForeArm.L", "Hand.L", "UpperArm.R", "ForeArm.R", "Hand.R",
+bone_names = ["Hips", "Torso", "Head", "UpperArm.L", "ForeArm.L", "Hand.L", "UpperArm.R", "ForeArm.R", "Hand.R",
+              "Thigh.L", "Shin.L", "Foot.L", "Thigh.R", "Shin.R", "Foot.R",
               "Ear.L", "Ear.R", "Brow.L", "Brow.R", "Lid.L", "Lid.R", "Mouth"]
 vgs = {n: mesh_ob.vertex_groups.new(name=n) for n in bone_names}
 
@@ -612,11 +830,14 @@ for v in me.vertices:
     w_arm_L = smoothstep((p.x - (ARM_X_MIN["L"] - ARM_BLEND)) / (2 * ARM_BLEND))
     w_arm_R = smoothstep(((ARM_X_MIN["R"] + ARM_BLEND) - p.x) / (2 * ARM_BLEND))
     w_body = 1 - w_head
+    w_trunk = w_body * (1 - w_arm_L - w_arm_R)
+    w_hips = hips_weight(p.z)
     weights = {
         "Head": w_head,
         "UpperArm.L": w_body * w_arm_L,
         "UpperArm.R": w_body * w_arm_R,
-        "Torso": w_body * (1 - w_arm_L - w_arm_R),
+        "Torso": w_trunk * (1 - w_hips),
+        "Hips": w_trunk * w_hips,
     }
     for n, w in weights.items():
         if w > 1e-4:
@@ -645,8 +866,22 @@ def bone(name, head, tail, parent=None, connect=False, deform=True):
 
 TORSO_BASE = Vector((-0.1, -0.15, Z_CUT))
 NECK = Vector((-0.05, -0.15, Z_NECK + 0.04))
-bone("Torso", TORSO_BASE, NECK)
+# Hips is the root and points straight up, so its local axes line up with the
+# world ones and avatar.js can keep nudging Torso along y to breathe. Legs hang
+# off Hips rather than Torso, so that breathing does not stretch them.
+HIPS_BASE = Vector((BODY_C.x, BODY_C.y, BODY_BOT_Z + 0.08))
+bone("Hips", HIPS_BASE, HIPS_BASE + Vector((0, 0, 0.32)))
+bone("Torso", TORSO_BASE, NECK, "Hips")
 bone("Head", NECK, NECK + Vector((0, 0, 0.9)), "Torso", connect=True)
+for side in ("L", "R"):
+    s = 1.0 if side == "L" else -1.0
+    hx = BODY_C.x + s * LEG_X
+    hip = Vector((hx, BODY_C.y, LEG_TOP_Z - 0.06))
+    knee = Vector((hx + s * LEG_SPLAY * 0.5, BODY_C.y - 0.02, LEG_TOP_Z - 0.40))
+    ankle = Vector((hx + s * LEG_SPLAY, BODY_C.y - 0.04, LEG_BOT_Z + 0.10))
+    bone(f"Thigh.{side}", hip, knee, "Hips")
+    bone(f"Shin.{side}", knee, ankle, f"Thigh.{side}", connect=True)
+    bone(f"Foot.{side}", ankle, ankle + Vector((0, -0.17, -0.09)), f"Shin.{side}", connect=True)
 for side in ("L", "R"):
     j = joints[side]
     bone(f"UpperArm.{side}", j["shoulder"], j["elbow"], "Torso")

@@ -19,7 +19,7 @@ narration.
 
 Both types are built inside one Django app, `devcast`, structured from day one so it can be
 lifted out into a standalone distribution (`wagtail-devcast`) the way puput packages the base
-blog — see [§9](#9-extraction-to-a-standalone-library).
+blog — see [§10](#10-extraction-to-a-standalone-library).
 
 ## 2. Constraints discovered in the existing codebase
 
@@ -101,6 +101,7 @@ class NarratableMixin:
 | `Model3DBlock` (GLB from a Wagtail document/collection) | `narration` override; reuses the vendored three.js import map |
 | `CalloutBlock`, `QuoteBlock` | Read, with a leading `"Aside:"` / attribution |
 | `NarrationBreakBlock` | Emits no visible markup; injects a pause or an aside line |
+| `DiagramBlock` (draw.io SVG + animation steps) | `narration` override, else caption; steps anchor to phrases *inside* it — see [§6](#6-animated-diagrams) |
 
 Each StreamField child already carries a stable UUID (`block.id`) that survives edits and
 reordering. That id is the join key between rendered HTML (`data-cue-id`), the narration script
@@ -278,7 +279,7 @@ to `DEVCAST_DEFAULT_VOICE` for a library consumer with no snippet configured.
 `Rendition` still carries a `voice` FK, and that FK is part of the uniqueness key. Switching the
 site voice therefore does not destroy anything: old renditions stay on disk, every page renders
 afresh under the new voice, and switching back is free. A `rerender_narrations --voice <key>`
-command queues the whole site in one pass with the budget guard from [§7](#7-security-and-cost-controls)
+command queues the whole site in one pass with the budget guard from [§8](#8-security-and-cost-controls)
 still applied, so a voice change is a deliberate, costed operation rather than an accident.
 
 ### 5.2 Script extraction and change detection
@@ -500,6 +501,25 @@ Staged, because the avatar API already gives us a cheap first step:
   same `Rendition` pipeline with `page=None`. Triggers: home-page greeting, empty search
   results, 404, first visit to a project page. This is why `Rendition.page` is a nullable FK to
   `Page` rather than to `AudioEntryPage` — one pipeline serves both narration and one-liners.
+- **The avatar reads over your shoulder** (built). While narration plays it leaves the header
+  and stands beside the section being read, walking down the page as the cues advance:
+  `audioblog.js` calls `window.sempriniAvatar.pinTo( sectionEl, { content, avoid } )` on every
+  section change, `setPresenting( playing )` on play/pause, and `unpin()` when the audio ends.
+  Pausing leaves it where it is - that is still where the reader stopped. Beside the text it
+  renders a fifth smaller and laps 30% of its width over the content's right edge; the position
+  is eased in document space, so scrolling carries it with its section immediately and only a
+  change of section glides. Under 720px wide there is no room beside the text and it stays in
+  the header.
+- **Presenting** (built). Standing beside the text it behaves like a speaker rather than the
+  header ornament: the gaze alternates between the section being read and the camera on
+  1.5-3.5s beats, each new section is pointed out at its first line before the hands fall back
+  to a weighted set of talking gestures, and a pointer coming within 90px takes its attention
+  for a few random seconds - with a cooldown afterwards, so it returns to the talk even if the
+  reader parks the pointer there. Gestures are authored as hand positions in model space and
+  aimed through the existing IK; the frame is only as wide as the body, so they stay inside
+  x -0.95..+0.75 and a point at an off-screen section is pulled back to the frame edge. Mouth
+  shapes (from the phase-4 amplitude hook below) and walking between marks slot into the same
+  state machine later. See [avatar.js](app/static/js/avatar.js#L262-L410).
 - **The avatar falls silent during narration** (decided). Utterances and page narration share one
   mouth, so they need one owner: `audioblog.js` claims an exclusive `avatar-audio` lock for the
   lifetime of the page whenever a rendition is present. The utterance scheduler checks the lock
@@ -536,7 +556,239 @@ is never accidentally listed before its artwork and owner email exist. The gener
 the existing [feeds.py](app/feeds.py) work — `item_enclosure_length` is already fixed there, and
 `Rendition.duration_ms` supplies `itunes:duration` directly, so no file probing is needed.
 
-## 6. Templates and assets
+## 6. Animated diagrams
+
+Architecture diagrams exported from draw.io, animated by a script an editor writes in the admin:
+connectors that draw themselves as the narration reaches them, flow lines that show direction of
+travel, and a camera that pans and zooms to whatever is being talked about. No code, no
+keyframes, and no timecodes typed by hand.
+
+### 6.1 The timeline is seekable, not triggered
+
+The obvious design — fire an animation when a cue becomes active — breaks the moment anyone
+touches the scrubber. [audioblog.js](app/static/js/audioblog.js#L118) already supports
+click-to-seek, `?t=`, chapter permalinks and session resume, so a reader arriving mid-diagram is
+routine rather than exceptional. One-shot triggers would leave the camera wherever it happened to
+be and half the arrows undrawn, with nothing to recover from.
+
+So a diagram compiles to **one paused GSAP timeline whose playhead is driven** (decided):
+
+```js
+tl.seek( audio.currentTime - cue.start );   // idempotent; correct at any t, scrubbing included
+```
+
+State becomes a pure function of time. Seeking backwards, arriving from a permalink and playing
+straight through all produce the same picture.
+
+This is also the entire justification for the dependency. The individual effects are opacity,
+transform and `stroke-dashoffset`, which the Web Animations API does in no bytes at all. What
+GSAP adds is a timeline that can be *scrubbed* across dozens of elements in one call — precisely
+the requirement the player imposes. Only the core is needed; none of the effects below use a
+plugin.
+
+### 6.2 Editors never type a number or an id
+
+Two authoring surfaces, neither involving coordinates or timecodes.
+
+**In draw.io.** Shapes and connectors that need animating get a name through *Edit Data*
+(Ctrl+M) — a human label like `database`, not an id. Everything else is left alone; an untagged
+diagram still renders, it just has nothing to target.
+
+**In Wagtail.** The editor picks a diagram, then builds an ordered list of steps whose target is
+a **dropdown populated from the diagram itself** ([§6.3](#63-ingest-sanitise-index-stamp)), so
+there is nothing to mistype and nothing to keep in sync by hand.
+
+Timing is the interesting part. An editor cannot know the database gets mentioned at 3.2s — TTS
+decides that, and it moves with every voice change and re-render. But narration already produces
+word-level timings: `Rendition.words` is emitted into the cue track at
+[models.py:669](app/devcast/models.py#L669). So a step anchors to **a phrase in its own
+narration** (decided) — *when I say "the database", zoom to `database`*. The frontend resolves the
+phrase against `words` inside the block's cue window. The anchor survives re-recording, voice
+swaps and speed changes because it describes intent rather than a clock reading.
+
+Resolution order, so a step always gets some time:
+
+| Anchor | Resolves to |
+| --- | --- |
+| phrase found in `words` | start of the first matching run inside the cue window |
+| phrase absent, or no word timings on the rendition | the step's index, spread evenly across the cue |
+| no narration on the page at all | scroll progress ([§6.7](#67-drivers-and-fallbacks)) |
+
+An unresolved phrase is surfaced in the admin rather than failing silently — a typo'd anchor is a
+content bug and should read like one.
+
+### 6.3 Ingest: sanitise, index, stamp
+
+An `<img src="…svg">` exposes nothing to script, so **the SVG has to be inlined** to be
+animatable. That makes an uploaded diagram live DOM in a logged-out reader's browser, which makes
+sanitising mandatory rather than a nicety — see [§8](#8-security-and-cost-controls).
+
+Diagrams are therefore a snippet rather than a raw document, so the expensive work happens once
+on save:
+
+```python
+class Diagram(models.Model):                        # snippet
+    title   = CharField(max_length=120)
+    source  = FileField(upload_to="diagrams/")      # the .svg exactly as exported
+    markup  = TextField(editable=False)             # sanitised and stamped, ready to inline
+    index   = JSONField(default=list, editable=False)   # what can be targeted
+    updated = DateTimeField(auto_now=True)
+```
+
+`save()` runs three passes over the parsed tree:
+
+1. **Sanitise** — an allowlist of SVG elements and attributes. Drops `<script>`,
+   `<foreignObject>`, every `on*` handler, `href`/`xlink:href` that is not a local `#fragment`,
+   external references of any kind, and `<style>` containing `@import` or `url(http…)`.
+2. **Index** — collect targetable nodes and their human labels. A node is targetable if it
+   carries a draw.io cell identifier ([§6.8](#68-open-question-what-drawio-actually-exports)) or,
+   failing that, contains a `<text>` run — which is what makes an *Edit Data* name usable as a
+   label. Connectors are recognised as unfilled `<path>` elements and labelled by the shapes they
+   run between wherever that can be inferred.
+3. **Stamp** — write a stable `data-dgm="<key>"` onto each targetable node and wrap the drawing
+   in `<g data-dgm-camera>`, so the camera has something to transform ([§6.6](#66-the-camera)).
+
+The index is what fills the editor's dropdown:
+
+```json
+[ { "key": "n3", "kind": "shape", "label": "Database" },
+  { "key": "n7", "kind": "edge",  "label": "API Gateway → Database", "head": "n8" } ]
+```
+
+Keys derive from the draw.io cell id where one survives export, and from the normalised label
+otherwise. That choice decides how well a script survives a **re-export of the same diagram**:
+ids are stable across rewording, labels are stable only while the wording is. Either way,
+re-saving a `Diagram` re-runs the index, and any step whose key has vanished is reported on the
+snippet and on every page using it rather than being silently dropped.
+
+### 6.4 The block
+
+```python
+class DiagramStepBlock(blocks.StructBlock):
+    target   = DiagramTargetBlock()             # dropdown fed by Diagram.index
+    effect   = ChoiceBlock(choices=EFFECTS)     # §6.5
+    anchor   = CharBlock(required=False, help_text="Play this when the narration says…")
+    duration = FloatBlock(default=0.6)
+    hold     = FloatBlock(default=0.0)          # extra dwell before the next step
+
+
+class DiagramBlock(NarratableBlock):
+    diagram   = SnippetChooserBlock("devcast.Diagram")
+    caption   = CharBlock(required=False, max_length=250)
+    narration = TextBlock(required=False)
+    steps     = ListBlock(DiagramStepBlock())
+
+    def narration_text(self, value):
+        return to_speech(value.get("narration") or value.get("caption"))
+```
+
+`narration_text` is not optional: [blocks.py](app/devcast/blocks.py#L1-L8) makes the narration
+contract the reason that module exists, and a block that skips it breaks the audio pipeline
+quietly. A diagram with no `narration` is simply not spoken, and its steps fall back to scroll.
+
+> `target` cannot be a plain `ChoiceBlock`. Its options depend on a *sibling* field's value, and
+> Wagtail resolves choices at class-definition time. `DiagramTargetBlock` is a small custom block
+> whose widget fetches `Diagram.index` from an admin-only endpoint when the chooser changes, and
+> degrades to a free-text key so a script is never un-editable if that endpoint is unavailable.
+
+The rendered markup is the sanitised SVG inline, plus the compiled script as JSON:
+
+```html
+<figure class="dgm" data-dgm-steps="…json…">
+  <svg …>…</svg>            {# ships in its FINAL state — see §6.7 #}
+</figure>
+```
+
+### 6.5 Step vocabulary
+
+| Effect | What it does | How |
+| --- | --- | --- |
+| `appear` / `fade` | bring a shape in or out | `opacity` |
+| `draw` | a connector draws itself end to end | `stroke-dasharray` = path length, `stroke-dashoffset` → 0 |
+| `flow` | direction of travel along an existing line | short repeating dash pattern, `stroke-dashoffset` on infinite repeat |
+| `pulse` | one-shot attention beat | `scale` about the shape's own centre |
+| `highlight` | bring one thing forward | tween the target's stroke/fill, dim the rest in a single tween |
+| `hide` | clear clutter before a zoom | `opacity` → 0 |
+
+Two details that only surface against a real draw.io export:
+
+- **Arrowheads are separate shapes.** draw.io emits the head as its own filled path, so a `draw`
+  step animates the line while the head sits waiting at the far end, which reads as a bug. The
+  index records the head alongside its connector (`"head": "n8"` above) and `draw` fades it in
+  over the last 15% of the tween.
+- **`getTotalLength()` needs a rendered element.** It returns 0 inside a `display:none` subtree,
+  silently producing a connector that never draws. Lengths are measured on first build, after the
+  figure is in the document, and a zero length downgrades the step to `appear`.
+
+### 6.6 The camera
+
+Panning and zooming is a transform on the `<g data-dgm-camera>` wrapper, **not** an animated
+`viewBox` (decided). The two look identical, but a group transform is GPU-composited, interpolates
+as a single matrix, and does not force a layout pass on every frame of a 60fps pan.
+
+The authoring model matters more than the mechanism: **a camera step targets shapes, never
+coordinates** (decided).
+
+```python
+{ "camera": ["database", "api-gateway"], "padding": 0.15 }   # frame these, 15% breathing room
+{ "camera": "fit" }                                          # back to the whole diagram
+```
+
+The transform is computed at build time from the union of the targets' `getBBox()`, fitted to the
+figure's aspect:
+
+```js
+const s = Math.min( vw / ( bw + 2 * pad ), vh / ( bh + 2 * pad ), MAX_ZOOM );
+```
+
+Storing the *target* rather than the matrix is what makes this hold up: the framing stays correct
+when the diagram is edited, when the figure is a different width on mobile, and on resize, where
+bounding boxes are re-measured and the timeline rebuilt at its current playhead. `MAX_ZOOM` exists
+because a camera told to frame one small box would otherwise magnify a 2-point stroke into a slab.
+
+### 6.7 Drivers and fallbacks
+
+One compiled timeline, five ways to decide its playhead:
+
+| Situation | Driver |
+| --- | --- |
+| Page has narration and this block has a cue | `audio.currentTime - cue.start` — the primary path |
+| No narration (a `DevProjectPage` showcase) | ScrollTrigger, scrubbed over the figure's own scroll span |
+| Outside any cue and any scroll span | play once when it enters the viewport |
+| `prefers-reduced-motion` | `tl.progress(1).pause()`, camera left fitted to the whole diagram |
+| No JS | the SVG exactly as authored |
+
+The last two rows are why **the SVG ships in its final state and JS sets the "from" states**
+(decided). A diagram that started hidden and relied on script to become visible would disappear
+entirely for the readers least able to afford it — the same principle
+[audioblog.js](app/static/js/audioblog.js#L1-L6) already states about the transcript. Reduced
+motion keeps every element and skips only the movement, camera included: a reader who asked for no
+motion still gets the whole diagram, just not a tour of it.
+
+The player and the diagram module do not import each other
+([§10](#10-extraction-to-a-standalone-library) rule 1). `audioblog.js` gains one line, on
+`timeupdate` and after every seek:
+
+```js
+root.dispatchEvent( new CustomEvent( 'devcast:time', { detail: { time: audio.currentTime }, bubbles: true } ) );
+```
+
+`diagram.js` subscribes to that. Everything else — project pages, standalone diagrams, pages with
+no audio at all — never involves the player.
+
+### 6.8 Open question: what draw.io actually exports
+
+All of the above rests on one unverified dependency: **whether draw.io's SVG export preserves a
+stable per-cell identifier**, and whether *Edit Data* properties survive export at all. It decides
+whether [§6.3](#63-ingest-sanitise-index-stamp) keys the index off export ids (stable across
+rewording) or off label text (stable only while the wording is). Both paths are designed for; only
+one should get written.
+
+Three exports settle it: one plain, one with *Edit Data* names on a couple of shapes and a
+connector, and a re-export of the second after moving a shape and renaming one label — which shows
+whether the ids hold across edits.
+
+## 7. Templates and assets
 
 ```
 app/devcast/templates/devcast/
@@ -545,11 +797,12 @@ app/devcast/templates/devcast/
     audio_entry_page.html
     partials/changelog.html, roadmap.html, project_hero.html, project_card.html,
              audio_player.html, cue_section.html
-    blocks/*.html
+    blocks/*.html                  including blocks/diagram.html (inlines the sanitised SVG)
 app/static/css/devcast.css         @imported from semprini.css
 app/static/js/devcast.js           changelog folding and deep links
 app/static/js/devcast-model.js     GLB viewer for hero models and 3D blocks
 app/static/js/audioblog.js         player + highlighting + avatar bridge
+app/static/js/diagram.js           SVG diagram timelines: effects, camera, playhead drivers
 ```
 
 Wagtail resolves `devcast/dev_project_page.html` automatically from the model name, so no
@@ -562,7 +815,7 @@ takes the *first* element with that class on the page and rigs it as the avatar.
 viewports use `.devcast-model-viewport` and `data-devcast-model` so the two never collide, and
 they ship containing a download link that the viewer replaces only once a model has loaded.
 
-## 7. Security and cost controls
+## 8. Security and cost controls
 
 - **Credentials in env only.** `DEVCAST_ENGINES` reads API keys from `os.environ`
   (`ELEVEN_LABS_API_KEY` for phase 3); `Voice` snippets store ids and tuning, never secrets.
@@ -587,6 +840,12 @@ they ship containing a download link that the viewer replaces only once a model 
   (`narration/<page_id>/<hash>.<ext>`); no user-controlled path components. Existing S3
   `public-read` + `max-age` applies; because names are content-addressed the objects are
   immutable and can be cached indefinitely.
+- **Uploaded SVG is untrusted markup.** Animating a diagram requires inlining it
+  ([§6.3](#63-ingest-sanitise-index-stamp)), so it becomes live DOM in a reader's browser. It is
+  sanitised **once on upload** against an element/attribute allowlist and the cleaned markup is
+  stored; the original upload is never rendered, and sanitising never happens at render time where
+  a miss would be served straight to the reader. The admin is not a trust boundary here — the
+  target of an injected handler is the logged-out reader, not the editor who uploaded it.
 - **ffmpeg** is invoked with an explicit argument list (never a shell string) on files the
   worker itself wrote.
 - **Retention.** Keep the current rendition plus exactly one previous (decided); a
@@ -596,7 +855,7 @@ they ship containing a download link that the viewer replaces only once a model 
   `#cue-<id>` as a plain anchor: it scrolls to the section if the block still exists, ignores the
   fragment for the audio, and never errors.
 
-## 8. Rollout phases
+## 9. Rollout phases
 
 | Phase | Deliverable | Notes |
 | --- | --- | --- |
@@ -608,10 +867,11 @@ they ship containing a download link that the viewer replaces only once a model 
 | 5 | Viseme track, avatar module API, `Utterance` snippets | |
 | 6 | `LocalHTTPEngine` + voice-clone sidecar; re-render sweep | Settings change only |
 | 7 | Per-category podcast feeds (`CategoryPodcast` snippet); extract `wagtail-devcast` | |
+| 8 | `Diagram` snippet + sanitiser + indexer, `DiagramBlock`, `diagram.js` | Independent of 4-7; the scroll driver needs nothing, the narration driver needs phase 3 |
 
 Each phase is independently shippable and independently revertable.
 
-## 9. Extraction to a standalone library
+## 10. Extraction to a standalone library
 
 The app is written from the start as if it were already external. Rules:
 
@@ -656,7 +916,7 @@ In this repo it starts as `app/devcast/` and moves out at phase 7 with a git-sub
 install then mirrors the existing puput arrangement in
 [requirements_nodeps.txt](app/requirements_nodeps.txt).
 
-## 10. Decisions
+## 11. Decisions
 
 1. **Project pages appear in the main chronological stream**, with a distinct card and an
    `updated` timestamp alongside `date`. See [§2.1](#21-placement-in-the-page-tree).
@@ -667,10 +927,25 @@ install then mirrors the existing puput arrangement in
 4. **ElevenLabs** for phase 3, using `ELEVEN_LABS_API_KEY` from `.env.prod` and the
    `with-timestamps` endpoint so word timings come for free. See [§5.3](#53-rendering-pipeline).
 5. **Keep one previous rendition**, with permalinks degrading to plain anchors when their cue is
-   gone. See [§7](#7-security-and-cost-controls).
+   gone. See [§8](#8-security-and-cost-controls).
 6. **One podcast show per category**, gated on a published `CategoryPodcast` snippet.
    See [§5.7](#57-podcast-feeds).
 7. **The avatar falls silent on narrated pages**, via an exclusive audio lock; skipped utterances
    are dropped, not queued. See [§5.6](#56-avatar-lipsync).
-8. The voice for the site can start with Id https://elevenlabs.io/voices/ev2kMR9ZJZZsemuogS5u
+8. **The avatar walks the page while narration plays**, pinned beside the section being read at
+   80% size and lapping 30% over the content's right edge, returning to the header when the
+   narration ends. Beside the text it presents: gaze alternating between the section and the
+   camera, a point at each new section, talking gestures in between, and a few seconds of
+   attention for a pointer that comes close. See [§5.6](#56-avatar-lipsync).
+9. **Diagram animations are one seekable timeline per diagram**, driven by narration time rather
+   than fired at cue boundaries, so scrubbing and permalinks stay correct.
+   See [§6.1](#61-the-timeline-is-seekable-not-triggered).
+10. **Animation steps anchor to a spoken phrase, not a timecode**, resolved against the word
+   timings narration already produces. See [§6.2](#62-editors-never-type-a-number-or-an-id).
+11. **Camera steps target shapes, never coordinates**, and animate a wrapper `<g>` transform
+    rather than the `viewBox`. See [§6.6](#66-the-camera).
+12. **Diagram SVG is sanitised on upload and ships in its final state**, with JS setting the
+    "from" states, so no-JS and reduced-motion readers still get the whole diagram.
+    See [§6.7](#67-drivers-and-fallbacks).
+13. The voice for the site can start with Id https://elevenlabs.io/voices/ev2kMR9ZJZZsemuogS5u
 

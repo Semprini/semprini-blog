@@ -35,3 +35,8 @@ dependencies = [
 
 [tool.uv.sources]
 django-el-pagination = { git = "https://github.com/shtalinberg/django-el-pagination.git" }
+
+[dependency-groups]
+dev = [
+    "numpy>=2.2.6",
+]

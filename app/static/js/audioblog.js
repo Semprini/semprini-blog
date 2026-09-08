@@ -8,6 +8,12 @@
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MANUAL_SCROLL_GRACE_MS = 4000;
 
+// The avatar reads over the reader's shoulder: once narration starts it leaves
+// the header and stands beside the section being read. Optional throughout -
+// the avatar is a header ornament that may not have loaded, or may not exist on
+// whatever template this page uses.
+const avatar = () => window.sempriniAvatar;
+
 function readCueTrack() {
 
 	const node = document.getElementById('devcast-cue-track');
@@ -87,8 +93,20 @@ function start() {
 
 	const duration = () => ( Number.isFinite( audio.duration ) ? audio.duration : track.audio.duration || 0 );
 	const storageKey = `devcast:${ location.pathname }`;
+	const content = document.querySelector( '.audioentry' );
 	let current = -1;
 	let lastManualScroll = 0;
+	let walking = false;      // does the avatar follow the narration yet?
+
+	// Called on every section change, so the avatar walks down the page with the
+	// narration. It is only asked to move once playback has started: before that
+	// the reader is still looking at the header, where it belongs.
+	function walkAvatar() {
+
+		if ( ! walking || current < 0 ) return;
+		avatar()?.pinTo( cues[ current ].el, { content, avoid: root } );
+
+	}
 
 	function setActive( index ) {
 
@@ -105,6 +123,7 @@ function start() {
 		const el = cues[ current ].el;
 		el.classList.add( 'is-narrating' );
 		el.setAttribute( 'aria-current', 'true' );
+		walkAvatar();
 
 		const followWanted = follow.checked && ! REDUCED_MOTION;
 		const recentlyScrolled = Date.now() - lastManualScroll < MANUAL_SCROLL_GRACE_MS;
@@ -165,6 +184,24 @@ function start() {
 	};
 	audio.addEventListener( 'play', syncPlayButton );
 	audio.addEventListener( 'pause', syncPlayButton );
+
+	audio.addEventListener( 'play', () => {
+
+		walking = true;
+		walkAvatar();
+		avatar()?.setPresenting( true );
+
+	} );
+	// Pausing leaves the avatar standing where it is - that is still the place
+	// the reader stopped at - but it stops presenting, because it has stopped
+	// talking. The end of the narration hands it back to the header.
+	audio.addEventListener( 'pause', () => avatar()?.setPresenting( false ) );
+	audio.addEventListener( 'ended', () => {
+
+		walking = false;
+		avatar()?.unpin();
+
+	} );
 
 	playBtn.addEventListener( 'click', () => {
 
