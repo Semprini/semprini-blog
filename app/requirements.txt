@@ -8,6 +8,7 @@ django-social-share
 django-storages
 boto3
 Markdown
+lxml
 wagtail-markdown
 markdownify
 requests
