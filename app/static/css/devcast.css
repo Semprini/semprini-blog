@@ -418,3 +418,50 @@
         transition: none;
     }
 }
+
+/* ---------------------------------------------------------------- diagrams */
+/* An animated draw.io export. The SVG is inlined so it can be animated; it
+   ships in its final state, so these styles must never hide anything. */
+.dgm {
+  position: relative;
+  margin: 1.6em 0;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dgm svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* draw.io exports carry light-dark() colours; svgtools pins the scheme, and
+     this stops a themed host page pulling them back. */
+  color-scheme: light;
+}
+.dgm-caption {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 12px 16px;
+  /* Not flex: flex makes each text node its own item and eats the spaces. */
+  display: block;
+  background: linear-gradient(transparent, rgba(8, 10, 14, .85) 45%);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.45;
+  min-height: 56px;
+  pointer-events: none;
+}
+.dgm-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #1c2027;
+}
+.dgm-bar button {
+  background: #2a3039; color: #e8eaed; border: 1px solid #2b313a;
+  border-radius: 4px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.dgm-bar input[type=range] { flex: 1; accent-color: #4da3ff; }
+.dgm-clock { font-variant-numeric: tabular-nums; color: #99a0ab; font-size: 12px; min-width: 46px; }
+.dgm-title { padding: 8px 12px; font-size: 13px; color: #666; }
+.dgm-cap { font-size: 14px; color: #666; margin-top: -1em; }

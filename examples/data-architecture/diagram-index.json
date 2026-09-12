@@ -1,0 +1,357 @@
+[
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-0",
+  "kind": "shape",
+  "label": "On/Off-Ramp DLZ Domain DLZ RDBMS API Interface Publish Interface Lakeh"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-1",
+  "kind": "shape",
+  "label": "On/Off-Ramp DLZ Domain DLZ RDBMS API Interface Publish Interface Lakeh"
+ },
+ {
+  "key": "jL--N1qoml8gLBs9-66e-5",
+  "kind": "shape",
+  "label": "On/Off-Ramp DLZ"
+ },
+ {
+  "key": "jL--N1qoml8gLBs9-66e-4",
+  "kind": "shape",
+  "label": "Domain DLZ"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-2",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-3",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-4",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-5",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-6",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-7",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-8",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-11",
+  "kind": "edge",
+  "label": "RDBMS"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-13",
+  "kind": "shape",
+  "label": "API Interface"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-14",
+  "kind": "shape",
+  "label": "Publish Interface"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-15",
+  "kind": "shape",
+  "label": "Lakehouse SQL Interface"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-19",
+  "kind": "edge",
+  "label": "Lakehouse"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-21",
+  "kind": "shape",
+  "label": "Foundational Data Products"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-22",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-23",
+  "kind": "shape",
+  "label": "Data Product On-Ramps"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-24",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-28",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-29",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-4",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-30",
+  "kind": "shape",
+  "label": "Source System"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-32",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-35",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-36",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-37",
+  "kind": "shape",
+  "label": "Experience Lakehouse SQL Interface"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-38",
+  "kind": "shape",
+  "label": "Analytics Experience"
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-41",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "eMchM2q8aVYuMzrbJ3zv-43",
+  "kind": "edge",
+  "label": "Mart"
+ },
+ {
+  "key": "6ybPreQpQYxrGfu7LY2Y-0",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "6ybPreQpQYxrGfu7LY2Y-1",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "6ybPreQpQYxrGfu7LY2Y-2",
+  "kind": "shape",
+  "label": "Experience Lakehouse Spark Interface"
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-3",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "5Dz0dSzOb64fpdrG9RXy-0",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "5Dz0dSzOb64fpdrG9RXy-1",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "5Dz0dSzOb64fpdrG9RXy-2",
+  "kind": "shape",
+  "label": "Subscribe Interface"
+ },
+ {
+  "key": "5Dz0dSzOb64fpdrG9RXy-3",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "5Dz0dSzOb64fpdrG9RXy-4",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "8Yi49fMFF8RFdJCsSLzB-0",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-11",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-12",
+  "kind": "shape",
+  "label": "Data Product Off-Ramps"
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-14",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-15",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-17",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-18",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-7",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-23",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-24",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "FU__Ed2bUjS1xYMPfBIX-0",
+  "kind": "shape",
+  "label": "Experience Data Products"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-0",
+  "kind": "shape",
+  "label": "Canonical Load & Policy Enforcement Canonical Data Serve Master Data M"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-1",
+  "kind": "shape",
+  "label": "Canonical Load & Policy Enforcement"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-2",
+  "kind": "shape",
+  "label": "Canonical Data Serve"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-3",
+  "kind": "shape",
+  "label": "Master Data Management"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-4",
+  "kind": "shape",
+  "label": "DQ Audit"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-15",
+  "kind": "shape",
+  "label": "Analytic Data Serve"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-16",
+  "kind": "shape",
+  "label": "Canonical to Experience (BDL) Semantic Transform"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-17",
+  "kind": "shape",
+  "label": "DQ Audit"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-19",
+  "kind": "shape",
+  "label": "Raw to Canonical Semantic Transform"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-20",
+  "kind": "shape",
+  "label": "Protocol Transform E.g. File to stream"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-21",
+  "kind": "edge",
+  "label": "Raw Storage"
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-10",
+  "kind": "shape",
+  "label": "DQ Audit"
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-11",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "fOdsYAS7zbKB1CYuf22Q-12",
+  "kind": "edge",
+  "label": ""
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-19",
+  "kind": "shape",
+  "label": "Canonical to Raw Semantic Transform"
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-20",
+  "kind": "shape",
+  "label": "Protocol Transform E.g. Stream to file"
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-21",
+  "kind": "edge",
+  "label": "Raw Storage"
+ },
+ {
+  "key": "kf_Cia_N1QG3O1UruQM8-22",
+  "kind": "shape",
+  "label": "DQ Audit"
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-23",
+  "kind": "shape",
+  "label": ""
+ },
+ {
+  "key": "nFWBtMJlsaCdo008WGRd-32",
+  "kind": "shape",
+  "label": ""
+ }
+]

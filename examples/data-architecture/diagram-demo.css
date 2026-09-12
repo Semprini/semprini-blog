@@ -1,0 +1,97 @@
+/* Prototype styling for the animated-diagram trial. Deliberately plain: the
+   point of the trial is the timeline, not the chrome. */
+
+:root {
+  --bg: #14171c;
+  --panel: #1c2027;
+  --ink: #e8eaed;
+  --muted: #99a0ab;
+  --accent: #4da3ff;
+  --line: #2b313a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.wrap { max-width: 1500px; margin: 0 auto; padding: 20px 20px 60px; }
+
+h1 { font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+.sub code { color: var(--ink); background: #22262e; padding: 1px 5px; border-radius: 3px; }
+
+/* The diagram stage. The SVG keeps its own aspect; the camera moves inside it. */
+.dgm {
+  position: relative;
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* draw.io exports ship `color-scheme: light dark` and light-dark() colours.
+   Pin it to light so the diagram doesn't invert against this dark page. */
+.dgm svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color-scheme: light;
+}
+
+.dgm-caption {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 14px 18px;
+  background: linear-gradient(transparent, rgba(8, 10, 14, .88) 45%);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.45;
+  min-height: 64px;
+  /* Not flex: flex makes each text node and each <b> a separate item, and the
+     whitespace between them collapses, so captions lose their spaces. */
+  display: block;
+  pointer-events: none;
+}
+.dgm-caption b { color: #8fc7ff; font-weight: 600; }
+
+/* Controls */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.bar button {
+  background: #2a3039;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.bar button:hover { background: #343b46; }
+.bar button.primary { background: var(--accent); border-color: var(--accent); color: #08121f; font-weight: 600; }
+.bar input[type=range] { flex: 1; accent-color: var(--accent); }
+.bar .t { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; min-width: 82px; }
+
+.steps { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+.steps button {
+  background: #22262e; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 11px; font: 12px/1.4 inherit; cursor: pointer;
+}
+.steps button:hover { color: var(--ink); }
+.steps button[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #08121f; }
+
+.note { margin-top: 22px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+.note strong { color: var(--ink); }

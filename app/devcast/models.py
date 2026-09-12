@@ -751,3 +751,109 @@ class RenderJob(models.Model):
 
     def __str__(self):
         return f"{self.rendition_id} {self.state}"
+
+
+class Diagram(models.Model):
+    """A draw.io export, sanitised once on upload and ready to inline.
+
+    Animating an SVG means putting it in the reader's DOM, where an ``<img>``
+    would expose nothing to script - so an uploaded diagram becomes live markup
+    and has to be sanitised. That happens here, on save, rather than at render
+    time where a miss would go straight to the reader.
+
+    ``script`` holds the animation steps. There is no editor for it yet (see
+    §6 of docs/devcast-design.md); ``import_diagram`` loads one from a file, and
+    an empty script simply renders the diagram as a static picture.
+    """
+
+    title = models.CharField(max_length=120, verbose_name=_("title"))
+    source = models.FileField(
+        upload_to="diagrams/",
+        verbose_name=_("SVG export"),
+        help_text=_("The .svg exported from draw.io."),
+    )
+    model_source = models.FileField(
+        upload_to="diagrams/",
+        blank=True,
+        verbose_name=_(".drawio source"),
+        help_text=_(
+            "Optional but worth adding: the model names the connectors, which the "
+            "SVG cannot. Exporting with 'Include a copy of my diagram' does the same job."
+        ),
+    )
+    page = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name=_("page"),
+        help_text=_("Which page of the .drawio this SVG came from."),
+    )
+
+    markup = models.TextField(blank=True, editable=False)
+    cell_index = models.JSONField(default=list, blank=True, editable=False)
+    script = models.JSONField(default=dict, blank=True, editable=False)
+    stats = models.JSONField(default=dict, blank=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        FieldPanel("title"),
+        FieldPanel("source"),
+        FieldPanel("model_source"),
+        FieldPanel("page"),
+    ]
+
+    class Meta:
+        verbose_name = _("diagram")
+        ordering = ["title"]
+
+    def __str__(self):
+        return self.title
+
+    def _read(self, field):
+        if not field:
+            return None
+        field.open("rb")
+        try:
+            return field.read()
+        finally:
+            field.close()
+
+    def rebuild(self):
+        """Re-run ingest over the stored files. Safe to call repeatedly."""
+        from .svgtools import ingest
+
+        svg = self._read(self.source)
+        if not svg:
+            return
+        self.markup, self.cell_index, self.stats = ingest(
+            svg, self._read(self.model_source), self.page or None
+        )
+
+    def save(self, *args, **kwargs):
+        self.rebuild()
+        super().save(*args, **kwargs)
+
+    @property
+    def steps(self):
+        return (self.script or {}).get("steps", [])
+
+    @property
+    def duration(self):
+        return (self.script or {}).get("duration", 0)
+
+    def missing_targets(self):
+        """Steps naming cells this diagram no longer has.
+
+        A re-export that renames or removes a shape would otherwise gut a script
+        silently; the admin surfaces this rather than dropping the steps."""
+        known = {c["key"] for c in self.cell_index or []}
+        aliases = (self.script or {}).get("targets", {})
+        wanted = set()
+        for step in self.steps:
+            for field in ("camera", "draw", "flow", "pulse", "sequence"):
+                value = step.get(field)
+                if isinstance(value, str) and value != "fit":
+                    wanted.add(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        wanted.add(item[0] if isinstance(item, list) else item)
+        return sorted(k for k in wanted if aliases.get(k, k) not in known)

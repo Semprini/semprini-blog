@@ -1,0 +1,291 @@
+{
+ "targets": {
+  "zoneOnramp": "jL--N1qoml8gLBs9-66e-5",
+  "zoneDomain": "jL--N1qoml8gLBs9-66e-4",
+  "source": "eMchM2q8aVYuMzrbJ3zv-30",
+  "onramp": "eMchM2q8aVYuMzrbJ3zv-22",
+  "onrampPort": "eMchM2q8aVYuMzrbJ3zv-28",
+  "protoIn": "nFWBtMJlsaCdo008WGRd-20",
+  "rawStore": "nFWBtMJlsaCdo008WGRd-21",
+  "dqOnramp": "fOdsYAS7zbKB1CYuf22Q-10",
+  "rawToCanon": "nFWBtMJlsaCdo008WGRd-19",
+  "publishPort": "eMchM2q8aVYuMzrbJ3zv-5",
+  "publishLabel": "eMchM2q8aVYuMzrbJ3zv-14",
+  "apiPort": "eMchM2q8aVYuMzrbJ3zv-3",
+  "apiLabel": "eMchM2q8aVYuMzrbJ3zv-13",
+  "domain": "eMchM2q8aVYuMzrbJ3zv-2",
+  "canonLoad": "nFWBtMJlsaCdo008WGRd-1",
+  "mdm": "nFWBtMJlsaCdo008WGRd-3",
+  "dqDomain": "nFWBtMJlsaCdo008WGRd-4",
+  "canonServe": "nFWBtMJlsaCdo008WGRd-2",
+  "rdbms": "eMchM2q8aVYuMzrbJ3zv-11",
+  "lakehouse": "eMchM2q8aVYuMzrbJ3zv-19",
+  "sqlPort": "eMchM2q8aVYuMzrbJ3zv-7",
+  "sqlLabel": "eMchM2q8aVYuMzrbJ3zv-15",
+  "subPort": "5Dz0dSzOb64fpdrG9RXy-0",
+  "subLabel": "5Dz0dSzOb64fpdrG9RXy-2",
+  "exp": "eMchM2q8aVYuMzrbJ3zv-32",
+  "canonToExp": "nFWBtMJlsaCdo008WGRd-16",
+  "dqExp": "nFWBtMJlsaCdo008WGRd-17",
+  "mart": "eMchM2q8aVYuMzrbJ3zv-43",
+  "analyticServe": "nFWBtMJlsaCdo008WGRd-15",
+  "expSqlPort": "eMchM2q8aVYuMzrbJ3zv-35",
+  "expSparkPort": "6ybPreQpQYxrGfu7LY2Y-0",
+  "consumer": "nFWBtMJlsaCdo008WGRd-32",
+  "offramp": "kf_Cia_N1QG3O1UruQM8-11",
+  "offrampTitle": "kf_Cia_N1QG3O1UruQM8-12",
+  "offrampPort": "kf_Cia_N1QG3O1UruQM8-18",
+  "canonToRaw": "kf_Cia_N1QG3O1UruQM8-19",
+  "rawStoreOut": "kf_Cia_N1QG3O1UruQM8-21",
+  "dqOfframp": "kf_Cia_N1QG3O1UruQM8-22",
+  "protoOut": "kf_Cia_N1QG3O1UruQM8-20",
+  "eSourceToOnramp": "fOdsYAS7zbKB1CYuf22Q-4",
+  "ePublish": "eMchM2q8aVYuMzrbJ3zv-24",
+  "eApiLookup": "5Dz0dSzOb64fpdrG9RXy-3",
+  "eSqlToExp": "eMchM2q8aVYuMzrbJ3zv-41",
+  "eSubToExp": "5Dz0dSzOb64fpdrG9RXy-4",
+  "eExpSql": "fOdsYAS7zbKB1CYuf22Q-11",
+  "eExpSpark": "fOdsYAS7zbKB1CYuf22Q-12",
+  "eOfframpSub": "kf_Cia_N1QG3O1UruQM8-23",
+  "eOfframpApi": "kf_Cia_N1QG3O1UruQM8-24",
+  "eOfframpToSource": "fOdsYAS7zbKB1CYuf22Q-7"
+ },
+ "steps": [
+  {
+   "at": 0,
+   "camera": "fit",
+   "caption": "Two landing zones: the On/Off-Ramp DLZ on the left, and the Domain DLZ on the right."
+  },
+  {
+   "at": 3,
+   "camera": [
+    "source",
+    "onrampPort"
+   ],
+   "padding": 200,
+   "pulse": [
+    "source"
+   ],
+   "caption": "Data starts in a source system."
+  },
+  {
+   "at": 6,
+   "camera": [
+    "source",
+    "onramp"
+   ],
+   "padding": 90,
+   "draw": [
+    "eSourceToOnramp"
+   ],
+   "flow": [
+    "eSourceToOnramp"
+   ],
+   "caption": "Every source system gets its own on-ramp data product, one per system."
+  },
+  {
+   "at": 10,
+   "camera": [
+    "onramp"
+   ],
+   "padding": 60,
+   "sequence": [
+    "protoIn",
+    "rawStore",
+    "dqOnramp",
+    "rawToCanon"
+   ],
+   "caption": "Inside the on-ramp: protocol transform (file to stream), raw storage, a DQ audit, then raw to canonical."
+  },
+  {
+   "at": 16,
+   "camera": [
+    "onramp",
+    "publishPort",
+    "publishLabel"
+   ],
+   "padding": 70,
+   "draw": [
+    "ePublish"
+   ],
+   "flow": [
+    "ePublish"
+   ],
+   "pulse": [
+    "publishLabel"
+   ],
+   "caption": "The on-ramp publishes to the streaming publish interface of the domain data product."
+  },
+  {
+   "at": 21,
+   "camera": [
+    "onramp",
+    "apiPort",
+    "apiLabel"
+   ],
+   "padding": 70,
+   "draw": [
+    "eApiLookup"
+   ],
+   "flow": [
+    [
+     "eApiLookup",
+     {
+      "dash": "4 14",
+      "speed": 55
+     }
+    ]
+   ],
+   "pulse": [
+    "apiLabel"
+   ],
+   "caption": "While publishing it calls the API interface to look things up — primary keys, for instance."
+  },
+  {
+   "at": 26,
+   "camera": [
+    "domain"
+   ],
+   "padding": 55,
+   "sequence": [
+    "canonLoad",
+    "mdm",
+    "dqDomain",
+    "canonServe",
+    "rdbms",
+    "lakehouse"
+   ],
+   "caption": "The domain product runs canonical load and policy enforcement, master data management, a DQ audit, then canonical data serve."
+  },
+  {
+   "at": 33,
+   "camera": [
+    "sqlLabel",
+    "subLabel"
+   ],
+   "padding": 150,
+   "pulse": [
+    "sqlLabel",
+    "subLabel"
+   ],
+   "caption": "It serves through a Lakehouse SQL interface and a Subscribe interface."
+  },
+  {
+   "at": 37,
+   "camera": [
+    "domain",
+    "exp"
+   ],
+   "padding": 70,
+   "draw": [
+    "eSqlToExp",
+    "eSubToExp"
+   ],
+   "flow": [
+    "eSqlToExp",
+    "eSubToExp"
+   ],
+   "caption": "An analytics experience data product in the same domain consumes both."
+  },
+  {
+   "at": 42,
+   "camera": [
+    "exp"
+   ],
+   "padding": 55,
+   "sequence": [
+    "canonToExp",
+    "dqExp",
+    "mart",
+    "analyticServe"
+   ],
+   "caption": "It runs canonical to experience, audits, lands a mart, and serves analytics."
+  },
+  {
+   "at": 48,
+   "camera": [
+    "exp",
+    "consumer"
+   ],
+   "padding": 90,
+   "draw": [
+    "eExpSql",
+    "eExpSpark"
+   ],
+   "flow": [
+    "eExpSql",
+    "eExpSpark"
+   ],
+   "caption": "Consumers reach it over the experience Lakehouse SQL and Spark interfaces."
+  },
+  {
+   "at": 53,
+   "camera": [
+    "subLabel",
+    "offramp"
+   ],
+   "padding": 80,
+   "draw": [
+    "eOfframpSub",
+    "eOfframpApi"
+   ],
+   "flow": [
+    [
+     "eOfframpSub",
+     {
+      "dir": -1
+     }
+    ],
+    [
+     "eOfframpApi",
+     {
+      "dash": "4 14",
+      "speed": 55
+     }
+    ]
+   ],
+   "pulse": [
+    "subLabel"
+   ],
+   "caption": "Going the other way, an off-ramp data product subscribes to the same domain product."
+  },
+  {
+   "at": 59,
+   "camera": [
+    "offramp"
+   ],
+   "padding": 60,
+   "sequence": [
+    "canonToRaw",
+    "rawStoreOut",
+    "dqOfframp",
+    "protoOut"
+   ],
+   "caption": "It reverses the journey: canonical to raw, raw storage, a DQ audit, then protocol transform back to file."
+  },
+  {
+   "at": 65,
+   "camera": [
+    "offrampPort",
+    "source"
+   ],
+   "padding": 140,
+   "draw": [
+    "eOfframpToSource"
+   ],
+   "flow": [
+    "eOfframpToSource"
+   ],
+   "pulse": [
+    "source"
+   ],
+   "caption": "And delivers it back out to a source system."
+  },
+  {
+   "at": 70,
+   "camera": "fit",
+   "caption": "End to end &mdash; in through the on-ramp, across the domain product, out to analytics and back through the off-ramp."
+  }
+ ],
+ "duration": 76
+}

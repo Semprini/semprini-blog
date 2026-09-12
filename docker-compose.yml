@@ -6,6 +6,13 @@ volumes:
       device: ./data/postgres18_data
       o: bind  
 
+# Shared with the core stack so pgadmin can reach this database without any
+# port being published on the host. Created by semprini-core.
+networks:
+  internal:
+    name: semprini_internal
+    external: true
+
 services:
   web:
     build:
@@ -17,9 +24,10 @@ services:
       - ./data/media:/home/app/media
     expose:
       - 8000
-    # Published to the host for local access (no reverse proxy in this stack).
+    # Bound to docker0, not 0.0.0.0 — Traefik reaches this via
+    # host.docker.internal; nothing outside the host needs it.
     ports:
-      - "8000:8000"
+      - "172.17.0.1:8000:8000"
     env_file:
       - ./.env.prod
     depends_on:
@@ -53,16 +61,9 @@ services:
       - ./data/backup/recovered_migrated_2026-09-03T07-23-18Z.sql.gz:/docker-entrypoint-initdb.d/restore.sql.gz:ro
     env_file:
       - ./.env.prod.db
-    ports:
-      - "5432:5432"
-
-  pgadmin4:
-    image: dpage/pgadmin4
-    restart: unless-stopped
-    env_file:
-      - ./.env.prod
-    expose:
-      - 80
+    networks:
+      - default
+      - internal
 
   # backupdb only dumps the DB to S3 on a cron; it exits immediately without
   # S3 creds, so it is disabled for local runs. Re-enable and add S3_* vars to

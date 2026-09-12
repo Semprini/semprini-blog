@@ -1,0 +1,645 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Data Architecture — animated</title>
+<style>
+/* Prototype styling for the animated-diagram trial. Deliberately plain: the
+   point of the trial is the timeline, not the chrome. */
+
+:root {
+  --bg: #14171c;
+  --panel: #1c2027;
+  --ink: #e8eaed;
+  --muted: #99a0ab;
+  --accent: #4da3ff;
+  --line: #2b313a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.wrap { max-width: 1500px; margin: 0 auto; padding: 20px 20px 60px; }
+
+h1 { font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+.sub code { color: var(--ink); background: #22262e; padding: 1px 5px; border-radius: 3px; }
+
+/* The diagram stage. The SVG keeps its own aspect; the camera moves inside it. */
+.dgm {
+  position: relative;
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* draw.io exports ship `color-scheme: light dark` and light-dark() colours.
+   Pin it to light so the diagram doesn't invert against this dark page. */
+.dgm svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color-scheme: light;
+}
+
+.dgm-caption {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 14px 18px;
+  background: linear-gradient(transparent, rgba(8, 10, 14, .88) 45%);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.45;
+  min-height: 64px;
+  /* Not flex: flex makes each text node and each <b> a separate item, and the
+     whitespace between them collapses, so captions lose their spaces. */
+  display: block;
+  pointer-events: none;
+}
+.dgm-caption b { color: #8fc7ff; font-weight: 600; }
+
+/* Controls */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.bar button {
+  background: #2a3039;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.bar button:hover { background: #343b46; }
+.bar button.primary { background: var(--accent); border-color: var(--accent); color: #08121f; font-weight: 600; }
+.bar input[type=range] { flex: 1; accent-color: var(--accent); }
+.bar .t { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; min-width: 82px; }
+
+.steps { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+.steps button {
+  background: #22262e; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 11px; font: 12px/1.4 inherit; cursor: pointer;
+}
+.steps button:hover { color: var(--ink); }
+.steps button[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #08121f; }
+
+.note { margin-top: 22px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+.note strong { color: var(--ink); }
+
+</style>
+<div class="wrap">
+  <h1>Source &rarr; on-ramp &rarr; domain data product &rarr; analytics</h1>
+  <p class="sub">Prototype of the <code>&sect;6</code> diagram engine, driven straight from a
+     draw.io export. <strong>Drag the scrubber</strong> &mdash; the picture is a pure function of
+     the playhead, which is the property the narration driver depends on.</p>
+
+  <figure class="dgm">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="background: transparent; background-color: transparent;  color-scheme: light;" version="1.1" width="2154px" height="914px" viewBox="0 0 2154 914" id="ge-svg-8AIUsbIUBaC7XwRViMSZ"><style type="text/css">@supports (color: light-dark(#000, #fff)) { #ge-svg-8AIUsbIUBaC7XwRViMSZ { --ge-adaptive-bg: light-dark(#ffffff, var(--ge-dark-color, #121212)); } }</style><defs/><g data-dgm-camera=""><g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-0"><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-1"><g data-cell-id="jL--N1qoml8gLBs9-66e-5"><g><rect x="1" y="1" width="648" height="910" rx="38.88" ry="38.88" fill="#ffffff" stroke="#000000" stroke-width="2" stroke-dasharray="6 6" pointer-events="all" style="fill: var(--ge-adaptive-bg, #ffffff); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 646px; height: 1px; padding-top: 8px; margin-left: 2px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 26px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">On/Off-Ramp DLZ</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="jL--N1qoml8gLBs9-66e-4"><g><rect x="663" y="1" width="1490" height="912" rx="27.36" ry="27.36" fill="#ffffff" stroke="#000000" stroke-width="2" stroke-dasharray="6 6" pointer-events="all" style="fill: var(--ge-adaptive-bg, #ffffff); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe flex-start; justify-content: unsafe center; width: 1488px; height: 1px; padding-top: 8px; margin-left: 664px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 25px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Domain DLZ</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-2"><g><path d="M 840 440.5 L 893.07 385.21 Q 900 378 910 378 L 1120 378 Q 1130 378 1136.93 385.21 L 1243.07 495.79 Q 1250 503 1243.07 510.21 L 1136.93 620.79 Q 1130 628 1120 628 L 910 628 Q 900 628 893.07 620.79 L 786.93 510.21 Q 780 503 786.93 495.79 Z" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(218, 232, 252), rgb(29, 41, 59)); stroke: light-dark(rgb(108, 142, 191), rgb(92, 121, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-3"><g transform="translate(0.5,0.5)"><ellipse cx="807" cy="595" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-4"><g><path d="M 840.63 566.5 L 826.06 578.83" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-5"><g transform="translate(0.5,0.5)"><ellipse cx="802" cy="405" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-6"><g><path d="M 839.22 441.25 L 819.92 422.43" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-7"><g transform="translate(0.5,0.5)"><ellipse cx="1235" cy="403" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-8"><g><path d="M 1193 443 L 1216.9 420.24" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-11"><g transform="translate(0.5,0.5)"><path d="M 955 588.2 C 955 582.57 968.43 578 985 578 C 992.96 578 1000.59 579.07 1006.21 580.99 C 1011.84 582.9 1015 585.49 1015 588.2 L 1015 612.8 C 1015 618.43 1001.57 623 985 623 C 977.04 623 969.41 621.93 963.79 620.01 C 958.16 618.1 955 615.51 955 612.8 Z" fill="#d5e8d4" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/><path d="M 1015 588.2 C 1015 593.83 1001.57 598.4 985 598.4 C 977.04 598.4 969.41 597.33 963.79 595.41 C 958.16 593.5 955 590.91 955 588.2" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 58px; height: 1px; padding-top: 609px; margin-left: 956px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">RDBMS</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-13"><g><rect x="738" y="627" width="64" height="33" rx="4.95" ry="4.95" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-end; width: 62px; height: 1px; padding-top: 644px; margin-left: 738px;"><div style="box-sizing: border-box; font-size: 0; text-align: right; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">API Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-14"><g><rect x="724" y="329.5" width="67" height="48.5" rx="7.27" ry="7.27" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-end; width: 65px; height: 1px; padding-top: 354px; margin-left: 724px;"><div style="box-sizing: border-box; font-size: 0; text-align: right; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Publish<br style="font-size: 14px;"/>Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-15"><g><rect x="1219" y="428" width="124" height="35" rx="5.25" ry="5.25" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-start; width: 122px; height: 1px; padding-top: 446px; margin-left: 1221px;"><div style="box-sizing: border-box; font-size: 0; text-align: left; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Lakehouse<br style="font-size: 14px;"/>SQL Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-19"><g transform="translate(0.5,0.5)"><path d="M 1016 588.2 C 1016 582.57 1029.43 578 1046 578 C 1053.96 578 1061.59 579.07 1067.21 580.99 C 1072.84 582.9 1076 585.49 1076 588.2 L 1076 612.8 C 1076 618.43 1062.57 623 1046 623 C 1038.04 623 1030.41 621.93 1024.79 620.01 C 1019.16 618.1 1016 615.51 1016 612.8 Z" fill="#d5e8d4" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/><path d="M 1076 588.2 C 1076 593.83 1062.57 598.4 1046 598.4 C 1038.04 598.4 1030.41 597.33 1024.79 595.41 C 1019.16 593.5 1016 590.91 1016 588.2" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 58px; height: 1px; padding-top: 609px; margin-left: 1017px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Lakehouse</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-21"><g><rect x="780" y="75" width="444" height="20" rx="3" ry="3" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 442px; height: 1px; padding-top: 85px; margin-left: 781px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #FFFFFF; "><div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: light-dark(#FFFFFF, #121212); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; "><span style="font-size: 24px; color: light-dark(rgb(0, 0, 0), rgb(237, 237, 237));">Foundational Data Products</span></div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-22"><g><path d="M 214 259 L 267.07 203.71 Q 274 196.5 284 196.5 L 494 196.5 Q 504 196.5 510.93 203.71 L 617.07 314.29 Q 624 321.5 617.07 328.71 L 510.93 439.29 Q 504 446.5 494 446.5 L 284 446.5 Q 274 446.5 267.07 439.29 L 160.93 328.71 Q 154 321.5 160.93 314.29 Z" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(218, 232, 252), rgb(29, 41, 59)); stroke: light-dark(rgb(108, 142, 191), rgb(92, 121, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-23"><g><rect x="103" y="75" width="444" height="20" rx="3" ry="3" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 442px; height: 1px; padding-top: 85px; margin-left: 104px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #FFFFFF; "><div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: light-dark(#FFFFFF, #121212); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; "><span style="font-size: 24px; color: light-dark(rgb(0, 0, 0), rgb(237, 237, 237));">Data Product On-Ramps</span></div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-24"><g transform="translate(0.5,0.5)"><path d="M 624 321.5 L 683 321.5 Q 693 321.5 703 321.55 L 792 321.95 Q 802 322 802 332 L 802 373.63" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 802 378.88 L 798.5 371.88 L 802 373.63 L 805.5 371.88 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-28"><g transform="translate(0.5,0.5)"><ellipse cx="169" cy="221.5" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-29"><g><path d="M 211.81 260.5 L 187.32 238.51" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-4"><g transform="translate(0.5,0.5)"><path d="M 63 388 Q 63 221.5 137.63 221.5" fill="none" stroke="#000000" stroke-miterlimit="10" stroke-dasharray="3 3" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 142.88 221.5 L 135.88 225 L 137.63 221.5 L 135.88 218 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-30"><g><rect x="23" y="388" width="80" height="73.5" rx="11.03" ry="11.03" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-start; width: 78px; height: 1px; padding-top: 425px; margin-left: 25px;"><div style="box-sizing: border-box; font-size: 0; text-align: left; color: #000000; "><div style="display: inline-block; font-size: 22px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Source System</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-32"><g><path d="M 1486 340.5 L 1539.07 285.21 Q 1546 278 1556 278 L 1766 278 Q 1776 278 1782.93 285.21 L 1889.07 395.79 Q 1896 403 1889.07 410.21 L 1782.93 520.79 Q 1776 528 1766 528 L 1556 528 Q 1546 528 1539.07 520.79 L 1432.93 410.21 Q 1426 403 1432.93 395.79 Z" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(218, 232, 252), rgb(29, 41, 59)); stroke: light-dark(rgb(108, 142, 191), rgb(92, 121, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-35"><g transform="translate(0.5,0.5)"><ellipse cx="1871" cy="299" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-36"><g><path d="M 1833.49 337.75 L 1853.56 316.91" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-37"><g><rect x="1889" y="231" width="103" height="35" rx="5.25" ry="5.25" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-start; width: 101px; height: 1px; padding-top: 249px; margin-left: 1891px;"><div style="box-sizing: border-box; font-size: 0; text-align: left; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Experience<br style="font-size: 14px;"/>Lakehouse<br style="font-size: 14px;"/>SQL Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-38"><g><rect x="1445" y="238.5" width="444" height="20" rx="3" ry="3" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 442px; height: 1px; padding-top: 249px; margin-left: 1446px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #FFFFFF; "><div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: light-dark(#FFFFFF, #121212); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; "><span style="font-size: 24px; color: light-dark(rgb(0, 0, 0), rgb(237, 237, 237));">Analytics Experience</span></div></div></div></foreignObject></switch></g></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-41"><g transform="translate(0.5,0.5)"><path d="M 1260 403 L 1419.63 403" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 1424.88 403 L 1417.88 406.5 L 1419.63 403 L 1417.88 399.5 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="eMchM2q8aVYuMzrbJ3zv-43"><g transform="translate(0.5,0.5)"><path d="M 1631 484.2 C 1631 478.57 1644.43 474 1661 474 C 1668.96 474 1676.59 475.07 1682.21 476.99 C 1687.84 478.9 1691 481.49 1691 484.2 L 1691 508.8 C 1691 514.43 1677.57 519 1661 519 C 1653.04 519 1645.41 517.93 1639.79 516.01 C 1634.16 514.1 1631 511.51 1631 508.8 Z" fill="#d5e8d4" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/><path d="M 1691 484.2 C 1691 489.83 1677.57 494.4 1661 494.4 C 1653.04 494.4 1645.41 493.33 1639.79 491.41 C 1634.16 489.5 1631 486.91 1631 484.2" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 58px; height: 1px; padding-top: 505px; margin-left: 1632px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Mart</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="6ybPreQpQYxrGfu7LY2Y-0"><g transform="translate(0.5,0.5)"><ellipse cx="1871" cy="494" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="6ybPreQpQYxrGfu7LY2Y-1"><g><path d="M 1834.43 466.5 L 1851 479" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="6ybPreQpQYxrGfu7LY2Y-2"><g><rect x="1889" y="526" width="116" height="35" rx="5.25" ry="5.25" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-start; width: 114px; height: 1px; padding-top: 544px; margin-left: 1891px;"><div style="box-sizing: border-box; font-size: 0; text-align: left; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Experience<br style="font-size: 14px;"/>Lakehouse<br style="font-size: 14px;"/>Spark Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-3"><g><rect x="129.25" y="411.11" width="60.03" height="31.5" rx="4.72" ry="4.72" fill="#ffffff" stroke="none" transform="rotate(45,159.26,426.86)" pointer-events="all" style="fill: var(--ge-adaptive-bg, #ffffff);"/></g></g><g data-cell-id="5Dz0dSzOb64fpdrG9RXy-0"><g transform="translate(0.5,0.5)"><ellipse cx="1238" cy="586" rx="25" ry="25" fill="#e1d5e7" stroke="#9673a6" pointer-events="all" style="fill: light-dark(rgb(225, 213, 231), rgb(57, 47, 63)); stroke: light-dark(rgb(150, 115, 166), rgb(149, 119, 163));"/></g></g><g data-cell-id="5Dz0dSzOb64fpdrG9RXy-1"><g><path d="M 1202.2 552.79 L 1219.81 568.85" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="5Dz0dSzOb64fpdrG9RXy-2"><g><rect x="1267" y="606" width="124" height="35" rx="5.25" ry="5.25" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe flex-start; width: 122px; height: 1px; padding-top: 624px; margin-left: 1269px;"><div style="box-sizing: border-box; font-size: 0; text-align: left; color: #000000; "><div style="display: inline-block; font-size: 14px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; ">Subscribe<br style="font-size: 14px;"/>Interface</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="5Dz0dSzOb64fpdrG9RXy-3"><g transform="translate(0.5,0.5)"><path d="M 624 321.5 L 690.6 321.5 Q 700.6 321.5 700.6 331.5 L 700.6 585 Q 700.6 595 710.6 595 L 775.63 595" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 780.88 595 L 773.88 598.5 L 775.63 595 L 773.88 591.5 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="5Dz0dSzOb64fpdrG9RXy-4"><g transform="translate(0.5,0.5)"><path d="M 1263 586 L 1334.5 586 Q 1344.5 586 1344.5 576 L 1344.5 413 Q 1344.5 403 1354.5 403 L 1419.63 403" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 1424.88 403 L 1417.88 406.5 L 1419.63 403 L 1417.88 399.5 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="8Yi49fMFF8RFdJCsSLzB-0"><g transform="translate(0.5,0.5)"><path d="M 1391 902.32 L 1394.66 59" fill="none" stroke="#666666" stroke-miterlimit="10" stroke-dasharray="3 3" pointer-events="stroke" style="stroke: light-dark(rgb(102, 102, 102), rgb(149, 149, 149));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-11"><g><path d="M 221.75 604.5 L 274.82 549.21 Q 281.75 542 291.75 542 L 501.75 542 Q 511.75 542 518.68 549.21 L 624.82 659.79 Q 631.75 667 624.82 674.21 L 518.68 784.79 Q 511.75 792 501.75 792 L 291.75 792 Q 281.75 792 274.82 784.79 L 168.68 674.21 Q 161.75 667 168.68 659.79 Z" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(218, 232, 252), rgb(29, 41, 59)); stroke: light-dark(rgb(108, 142, 191), rgb(92, 121, 163));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-12"><g><rect x="103" y="865" width="444" height="20" rx="3" ry="3" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 442px; height: 1px; padding-top: 875px; margin-left: 104px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #FFFFFF; "><div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: light-dark(#FFFFFF, #121212); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; "><span style="font-size: 24px; color: light-dark(rgb(0, 0, 0), rgb(237, 237, 237));">Data Product Off-Ramps</span></div></div></div></foreignObject></switch></g></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-14"><g><path d="M 219.56 606 L 195.07 584.01" fill="none" stroke="#b85450" stroke-width="2" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-15"><g transform="translate(0.5,0.5)"><ellipse cx="189" cy="575" rx="25" ry="25" fill="#f8cecc" stroke="#b85450" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-17"><g><ellipse cx="188.5" cy="575.5" rx="23.5" ry="23.5" fill="#ffffff" stroke="none" pointer-events="all" style="fill: var(--ge-adaptive-bg, #ffffff);"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-18"><g><rect x="146.69" y="539.12" width="60.03" height="46" rx="6.9" ry="6.9" fill="#ffffff" stroke="none" transform="rotate(-225,176.7,562.12)" pointer-events="all" style="fill: var(--ge-adaptive-bg, #ffffff);"/></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-7"><g transform="translate(0.5,0.5)"><path d="M 192.97 578.38 Q 63 578.4 63 467.87" fill="none" stroke="#000000" stroke-miterlimit="10" stroke-dasharray="3 3" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 63 462.62 L 66.5 469.62 L 63 467.87 L 59.5 469.62 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-23"><g transform="translate(0.5,0.5)"><path d="M 638.12 667 L 693 667 Q 703 667 703 677 L 703 700 Q 703 710 713 710 L 1230.8 710 Q 1240.8 710 1240.8 700 L 1240.8 621 Q 1240.8 611 1239.4 611 L 1238 611" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 632.87 667 L 639.87 663.5 L 638.12 667 L 639.87 670.5 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-24"><g transform="translate(0.5,0.5)"><path d="M 638.12 667 L 692 667 Q 702 667 702 657 L 702 617 Q 702 607 712 607 L 785.07 607" fill="none" stroke="#0000ff" stroke-miterlimit="10" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/><path d="M 632.87 667 L 639.87 663.5 L 638.12 667 L 639.87 670.5 Z" fill="#0000ff" stroke="#0000ff" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 255), rgb(205, 205, 255)); stroke: light-dark(rgb(0, 0, 255), rgb(205, 205, 255));"/></g></g><g data-cell-id="FU__Ed2bUjS1xYMPfBIX-0"><g><rect x="1535" y="85" width="444" height="20" rx="3" ry="3" fill="none" stroke="none" pointer-events="all"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 442px; height: 1px; padding-top: 95px; margin-left: 1536px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #FFFFFF; "><div style="display: inline-block; font-size: 24px; font-family: Helvetica; color: light-dark(#FFFFFF, #121212); line-height: 1.2; pointer-events: all; font-weight: bold; white-space: normal; word-wrap: normal; "><span style="font-size: 24px; color: light-dark(rgb(0, 0, 0), rgb(237, 237, 237));">Experience Data Products</span></div></div></div></foreignObject></switch></g></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-0"><g data-cell-id="nFWBtMJlsaCdo008WGRd-1"><g transform="translate(0.5,0.5)"><path d="M 845 445.5 L 893.09 395.23 Q 900 388 906.91 395.23 L 1003.09 495.77 Q 1010 503 1003.09 510.23 L 906.91 610.77 Q 900 618 893.09 610.77 L 796.91 510.23 Q 790 503 796.91 495.77 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 503px; margin-left: 791px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Canonical<br/>Load &amp; Policy Enforcement</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-2"><g transform="translate(0.5,0.5)"><path d="M 1075 445.5 L 1123.09 395.23 Q 1130 388 1136.91 395.23 L 1233.09 495.77 Q 1240 503 1233.09 510.23 L 1136.91 610.77 Q 1130 618 1123.09 610.77 L 1026.91 510.23 Q 1020 503 1026.91 495.77 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 503px; margin-left: 1021px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Canonical<br/>Data Serve</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-3"><g transform="translate(0.5,0.5)"><path d="M 958.99 442 L 958.99 344.96 Q 958.99 334.96 966.22 341.87 L 1063.77 435.09 Q 1070.99 442 1063.77 448.91 L 966.22 542.13 Q 958.99 549.03 958.99 539.03 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" transform="rotate(90,1014.99,442)" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 212px; height: 1px; padding-top: 430px; margin-left: 909px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Master<br/>Data <div>Management</div><div><br/></div></div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-4"><g transform="translate(0.5,0.5)"><path d="M 996.86 526 L 1007.89 515.05 Q 1014.99 508 1022.09 515.05 L 1044.14 536.95 Q 1051.24 544 1044.14 551.05 L 1022.09 572.95 Q 1014.99 580 1007.89 572.95 L 985.84 551.05 Q 978.74 544 985.84 536.95 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 71px; height: 1px; padding-top: 544px; margin-left: 980px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">DQ<br/>Audit</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-15"><g transform="translate(0.5,0.5)"><path d="M 1719 343 L 1767.09 292.73 Q 1774 285.5 1780.91 292.73 L 1877.09 393.27 Q 1884 400.5 1877.09 407.73 L 1780.91 508.27 Q 1774 515.5 1767.09 508.27 L 1670.91 407.73 Q 1664 400.5 1670.91 393.27 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 401px; margin-left: 1665px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Analytic Data<br/>Serve</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-16"><g transform="translate(0.5,0.5)"><path d="M 1494 343 L 1542.09 292.73 Q 1549 285.5 1555.91 292.73 L 1652.09 393.27 Q 1659 400.5 1652.09 407.73 L 1555.91 508.27 Q 1549 515.5 1542.09 508.27 L 1445.91 407.73 Q 1439 400.5 1445.91 393.27 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 401px; margin-left: 1440px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Canonical to Experience (BDL)<br/>Semantic Transform</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-17"><g transform="translate(0.5,0.5)"><path d="M 1642.13 427 L 1653.15 416.05 Q 1660.25 409 1667.35 416.05 L 1689.4 437.95 Q 1696.5 445 1689.4 452.05 L 1667.35 473.95 Q 1660.25 481 1653.15 473.95 L 1631.1 452.05 Q 1624 445 1631.1 437.95 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 71px; height: 1px; padding-top: 445px; margin-left: 1625px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">DQ<br/>Audit</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-19"><g transform="translate(0.5,0.5)"><path d="M 446 264 L 494.09 213.73 Q 501 206.5 507.91 213.73 L 604.09 314.27 Q 611 321.5 604.09 328.73 L 507.91 429.27 Q 501 436.5 494.09 429.27 L 397.91 328.73 Q 391 321.5 397.91 314.27 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 322px; margin-left: 392px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Raw to Canonical<br/>Semantic Transform</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-20"><g transform="translate(0.5,0.5)"><path d="M 222 264 L 270.09 213.73 Q 277 206.5 283.91 213.73 L 380.09 314.27 Q 387 321.5 380.09 328.73 L 283.91 429.27 Q 277 436.5 270.09 429.27 L 173.91 328.73 Q 167 321.5 173.91 314.27 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 322px; margin-left: 168px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Protocol Transform<br/>E.g. File to stream</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-21"><g transform="translate(0.5,0.5)"><path d="M 359 401.7 C 359 396.07 372.43 391.5 389 391.5 C 396.96 391.5 404.59 392.57 410.21 394.49 C 415.84 396.4 419 398.99 419 401.7 L 419 426.3 C 419 431.93 405.57 436.5 389 436.5 C 381.04 436.5 373.41 435.43 367.79 433.51 C 362.16 431.6 359 429.01 359 426.3 Z" fill="#d5e8d4" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/><path d="M 419 401.7 C 419 407.33 405.57 411.9 389 411.9 C 381.04 411.9 373.41 410.83 367.79 408.91 C 362.16 407 359 404.41 359 401.7" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 58px; height: 1px; padding-top: 423px; margin-left: 360px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Raw Storage</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-10"><g transform="translate(0.5,0.5)"><path d="M 370.88 351 L 381.9 340.05 Q 389 333 396.1 340.05 L 418.15 361.95 Q 425.25 369 418.15 376.05 L 396.1 397.95 Q 389 405 381.9 397.95 L 359.85 376.05 Q 352.75 369 359.85 361.95 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 71px; height: 1px; padding-top: 369px; margin-left: 354px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">DQ<br/>Audit</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-11"><g transform="translate(0.5,0.5)"><path d="M 1896 299 Q 2026 299 2026 348.63" fill="none" stroke="#000000" stroke-miterlimit="10" stroke-dasharray="3 3" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 2026 353.88 L 2022.5 346.88 L 2026 348.63 L 2029.5 346.88 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g><g data-cell-id="fOdsYAS7zbKB1CYuf22Q-12"><g transform="translate(0.5,0.5)"><path d="M 1896 494 Q 2026 494 2026 439.37" fill="none" stroke="#000000" stroke-miterlimit="10" stroke-dasharray="3 3" pointer-events="stroke" style="stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/><path d="M 2026 434.12 L 2029.5 441.12 L 2026 439.37 L 2022.5 441.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); stroke: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));"/></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-19"><g transform="translate(0.5,0.5)"><path d="M 453.75 609.5 L 501.84 559.23 Q 508.75 552 515.66 559.23 L 611.84 659.77 Q 618.75 667 611.84 674.23 L 515.66 774.77 Q 508.75 782 501.84 774.77 L 405.66 674.23 Q 398.75 667 405.66 659.77 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 667px; margin-left: 400px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Canonical to Raw<br/>Semantic Transform</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-20"><g transform="translate(0.5,0.5)"><path d="M 229.75 609.5 L 277.84 559.23 Q 284.75 552 291.66 559.23 L 387.84 659.77 Q 394.75 667 387.84 674.23 L 291.66 774.77 Q 284.75 782 277.84 774.77 L 181.66 674.23 Q 174.75 667 181.66 659.77 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 218px; height: 1px; padding-top: 667px; margin-left: 176px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 16px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Protocol Transform<br/>E.g. Stream to file</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-21"><g transform="translate(0.5,0.5)"><path d="M 366.75 747.2 C 366.75 741.57 380.18 737 396.75 737 C 404.71 737 412.34 738.07 417.96 739.99 C 423.59 741.9 426.75 744.49 426.75 747.2 L 426.75 771.8 C 426.75 777.43 413.32 782 396.75 782 C 388.79 782 381.16 780.93 375.54 779.01 C 369.91 777.1 366.75 774.51 366.75 771.8 Z" fill="#d5e8d4" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(213, 232, 212), rgb(31, 47, 30)); stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/><path d="M 426.75 747.2 C 426.75 752.83 413.32 757.4 396.75 757.4 C 388.79 757.4 381.16 756.33 375.54 754.41 C 369.91 752.5 366.75 749.91 366.75 747.2" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="all" style="stroke: light-dark(rgb(130, 179, 102), rgb(68, 110, 44));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 58px; height: 1px; padding-top: 768px; margin-left: 368px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">Raw Storage</div></div></div></foreignObject></switch></g></g></g><g data-cell-id="kf_Cia_N1QG3O1UruQM8-22"><g transform="translate(0.5,0.5)"><path d="M 378.63 696.5 L 389.65 685.55 Q 396.75 678.5 403.85 685.55 L 425.9 707.45 Q 433 714.5 425.9 721.55 L 403.85 743.45 Q 396.75 750.5 389.65 743.45 L 367.6 721.55 Q 360.5 714.5 367.6 707.45 Z" fill="#f8cecc" stroke="#b85450" stroke-miterlimit="10" pointer-events="all" style="fill: light-dark(rgb(248, 206, 204), rgb(81, 45, 43)); stroke: light-dark(rgb(184, 84, 80), rgb(215, 129, 126));"/></g><g><g><switch><foreignObject style="overflow: visible; text-align: left;" pointer-events="none" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="display: flex; align-items: unsafe center; justify-content: unsafe center; width: 71px; height: 1px; padding-top: 715px; margin-left: 362px;"><div style="box-sizing: border-box; font-size: 0; text-align: center; color: #000000; "><div style="display: inline-block; font-size: 12px; font-family: Helvetica; color: light-dark(#000000, #ffffff); line-height: 1.2; pointer-events: all; white-space: normal; word-wrap: normal; ">DQ<br/>Audit</div></div></div></foreignObject></switch></g></g></g></g><g data-cell-id="nFWBtMJlsaCdo008WGRd-23"><g data-cell-id="nFWBtMJlsaCdo008WGRd-32"><g><rect x="1987" y="355" width="78" height="78" fill="none" stroke="none" pointer-events="all"/><path d="M 2034.22 367.92 C 2034.22 362.75 2038.5 358.55 2043.76 358.55 C 2049.02 358.55 2053.29 362.75 2053.29 367.92 C 2053.29 373.08 2049.02 377.29 2043.76 377.29 C 2038.5 377.29 2034.22 373.08 2034.22 367.92 Z M 2054.65 380.41 C 2053.51 379.7 2052.29 379.11 2051.05 378.64 C 2054.54 376.31 2056.84 372.38 2056.84 367.92 C 2056.84 360.8 2050.97 355 2043.76 355 C 2036.55 355 2030.68 360.8 2030.68 367.92 C 2030.68 372.37 2032.97 376.3 2036.45 378.62 C 2034.18 379.48 2032.05 380.73 2030.16 382.34 L 2032.47 385.04 C 2035.63 382.32 2039.63 380.83 2043.73 380.83 C 2046.92 380.83 2050.05 381.73 2052.78 383.42 C 2057.64 386.44 2060.83 391.74 2061.37 397.55 L 2043.73 397.55 L 2043.73 401.09 L 2063.23 401.09 C 2064.21 401.09 2065 400.3 2065 399.32 C 2065 391.62 2061.04 384.37 2054.65 380.41 Z M 1998.77 367.92 C 1998.77 362.75 2003.05 358.55 2008.31 358.55 C 2013.56 358.55 2017.84 362.75 2017.84 367.92 C 2017.84 373.08 2013.56 377.29 2008.31 377.29 C 2003.05 377.29 1998.77 373.08 1998.77 367.92 Z M 2008.27 397.55 L 1990.63 397.55 C 1991.48 388.18 1999.07 380.83 2008.27 380.83 C 2011.47 380.83 2014.6 381.73 2017.33 383.42 C 2018.1 383.9 2018.83 384.44 2019.53 385.04 L 2021.84 382.35 C 2021.01 381.63 2020.12 380.98 2019.2 380.41 C 2018.05 379.7 2016.84 379.11 2015.59 378.64 C 2019.08 376.31 2021.39 372.38 2021.39 367.92 C 2021.39 360.8 2015.52 355 2008.31 355 C 2001.09 355 1995.22 360.8 1995.22 367.92 C 1995.22 372.37 1997.52 376.31 2001.02 378.63 C 1992.85 381.72 1987 389.81 1987 399.32 C 1987 400.3 1987.79 401.09 1988.77 401.09 L 2008.27 401.09 Z M 2008.35 429.45 C 2009.21 420.09 2016.8 412.74 2026 412.74 C 2029.19 412.74 2032.33 413.64 2035.06 415.33 C 2039.91 418.35 2043.1 423.65 2043.64 429.45 Z M 2016.5 399.83 C 2016.5 394.66 2020.77 390.45 2026.03 390.45 C 2031.29 390.45 2035.57 394.66 2035.57 399.83 C 2035.57 404.99 2031.29 409.2 2026.03 409.2 C 2020.77 409.2 2016.5 404.99 2016.5 399.83 Z M 2036.93 412.32 C 2035.78 411.61 2034.57 411.02 2033.32 410.54 C 2036.81 408.22 2039.11 404.29 2039.11 399.83 C 2039.11 392.7 2033.25 386.91 2026.03 386.91 C 2018.82 386.91 2012.95 392.7 2012.95 399.83 C 2012.95 404.28 2015.25 408.22 2018.74 410.54 C 2010.58 413.63 2004.73 421.72 2004.73 431.23 C 2004.73 432.21 2005.52 433 2006.5 433 L 2045.5 433 C 2046.48 433 2047.27 432.21 2047.27 431.23 C 2047.27 423.53 2043.31 416.28 2036.93 412.32 Z" fill="#232f3d" stroke="none" pointer-events="all" style="fill: light-dark(rgb(35, 47, 61), rgb(190, 200, 212));"/></g></g></g></g></g></g></svg>
+    <figcaption class="dgm-caption"></figcaption>
+  </figure>
+
+  <div class="bar">
+    <button class="primary" data-play>Play</button>
+    <input type="range" data-seek min="0" max="1000" value="0" aria-label="Scrub">
+    <span class="t" data-clock>0.0s</span>
+  </div>
+
+  <div class="steps">
+      <button data-step="0">0. 0s</button>
+      <button data-step="3.0">1. 3s</button>
+      <button data-step="6.0">2. 6s</button>
+      <button data-step="10.0">3. 10s</button>
+      <button data-step="16.0">4. 16s</button>
+      <button data-step="21.0">5. 21s</button>
+      <button data-step="26.0">6. 26s</button>
+      <button data-step="33.0">7. 33s</button>
+      <button data-step="37.0">8. 37s</button>
+      <button data-step="42.0">9. 42s</button>
+      <button data-step="48.0">10. 48s</button>
+      <button data-step="53.0">11. 53s</button>
+      <button data-step="59.0">12. 59s</button>
+      <button data-step="65.0">13. 65s</button>
+      <button data-step="70.0">14. 70s</button>
+  </div>
+
+  <p class="note"><strong>What this is testing.</strong> Every effect is built into one paused
+     GSAP timeline whose playhead is driven from outside, so seeking anywhere renders the right
+     state. Connector "flow" is deliberately <em>not</em> a timeline tween &mdash; an infinite
+     repeat has infinite duration and would make the timeline unseekable &mdash; so it is derived
+     from the playhead instead. Camera steps name shapes, never coordinates.</p>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+/* Animated draw.io diagram — prototype of the §6 engine in docs/devcast-design.md,
+ * run against a real export (Data_Architecture-Concept.svg).
+ *
+ * The one thing this trial exists to prove: **state is a pure function of time**.
+ * Everything is built into a single paused GSAP timeline whose playhead is driven
+ * from outside, so dragging the scrubber to any point renders the correct picture.
+ * In the Wagtail block that driver becomes `audio.currentTime - cue.start`; here
+ * it is a range input, which exercises the same path harder.
+ */
+
+const VIEW = { w: 2154, h: 914 };          // the export's own viewBox
+const MAX_ZOOM = 3.0;                       // never magnify a 2px stroke into a slab
+const REDUCED = matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
+
+// draw.io cell ids, named. In the real block these come from Diagram.index and
+// the editor picks them from a dropdown — nobody ever types one of these.
+const ID = {
+	zoneOnramp:   'jL--N1qoml8gLBs9-66e-5',   // "On/Off-Ramp DLZ"
+	zoneDomain:   'jL--N1qoml8gLBs9-66e-4',   // "Domain DLZ"
+
+	source:       'eMchM2q8aVYuMzrbJ3zv-30',  // Source System
+	onramp:       'eMchM2q8aVYuMzrbJ3zv-22',  // on-ramp data product (hexagon)
+	onrampPort:   'eMchM2q8aVYuMzrbJ3zv-28',
+	protoIn:      'nFWBtMJlsaCdo008WGRd-20',  // Protocol Transform (file → stream)
+	rawStore:     'nFWBtMJlsaCdo008WGRd-21',  // Raw Storage
+	dqOnramp:     'fOdsYAS7zbKB1CYuf22Q-10',  // DQ Audit
+	rawToCanon:   'nFWBtMJlsaCdo008WGRd-19',  // Raw to Canonical Semantic Transform
+
+	publishPort:  'eMchM2q8aVYuMzrbJ3zv-5',
+	publishLabel: 'eMchM2q8aVYuMzrbJ3zv-14',  // "Publish Interface"
+	apiPort:      'eMchM2q8aVYuMzrbJ3zv-3',
+	apiLabel:     'eMchM2q8aVYuMzrbJ3zv-13',  // "API Interface"
+
+	domain:       'eMchM2q8aVYuMzrbJ3zv-2',   // foundational data product (hexagon)
+	canonLoad:    'nFWBtMJlsaCdo008WGRd-1',   // Canonical Load & Policy Enforcement
+	mdm:          'nFWBtMJlsaCdo008WGRd-3',   // Master Data Management
+	dqDomain:     'nFWBtMJlsaCdo008WGRd-4',   // DQ Audit
+	canonServe:   'nFWBtMJlsaCdo008WGRd-2',   // Canonical Data Serve
+	rdbms:        'eMchM2q8aVYuMzrbJ3zv-11',
+	lakehouse:    'eMchM2q8aVYuMzrbJ3zv-19',
+
+	sqlPort:      'eMchM2q8aVYuMzrbJ3zv-7',
+	sqlLabel:     'eMchM2q8aVYuMzrbJ3zv-15',  // "Lakehouse SQL Interface"
+	subPort:      '5Dz0dSzOb64fpdrG9RXy-0',
+	subLabel:     '5Dz0dSzOb64fpdrG9RXy-2',   // "Subscribe Interface"
+
+	exp:          'eMchM2q8aVYuMzrbJ3zv-32',  // analytics experience product (hexagon)
+	canonToExp:   'nFWBtMJlsaCdo008WGRd-16',  // Canonical to Experience (BDL)
+	dqExp:        'nFWBtMJlsaCdo008WGRd-17',  // DQ Audit
+	mart:         'eMchM2q8aVYuMzrbJ3zv-43',  // Mart
+	analyticServe:'nFWBtMJlsaCdo008WGRd-15',  // Analytic Data Serve
+	expSqlPort:   'eMchM2q8aVYuMzrbJ3zv-35',
+	expSparkPort: '6ybPreQpQYxrGfu7LY2Y-0',
+	consumer:     'nFWBtMJlsaCdo008WGRd-32',
+
+	// the return path: an off-ramp product consumes from the same domain product
+	// and delivers back out to a source system
+	offramp:      'kf_Cia_N1QG3O1UruQM8-11',
+	offrampTitle: 'kf_Cia_N1QG3O1UruQM8-12',
+	offrampPort:  'kf_Cia_N1QG3O1UruQM8-18',
+	canonToRaw:   'kf_Cia_N1QG3O1UruQM8-19',  // Canonical to Raw Semantic Transform
+	rawStoreOut:  'kf_Cia_N1QG3O1UruQM8-21',  // Raw Storage
+	dqOfframp:    'kf_Cia_N1QG3O1UruQM8-22',  // DQ Audit
+	protoOut:     'kf_Cia_N1QG3O1UruQM8-20',  // Protocol Transform (stream → file)
+
+	// connectors (each is a line path + a separately-filled arrowhead path)
+	eSourceToOnramp: 'fOdsYAS7zbKB1CYuf22Q-4',
+	ePublish:        'eMchM2q8aVYuMzrbJ3zv-24',
+	eApiLookup:      '5Dz0dSzOb64fpdrG9RXy-3',
+	eSqlToExp:       'eMchM2q8aVYuMzrbJ3zv-41',
+	eSubToExp:       '5Dz0dSzOb64fpdrG9RXy-4',
+	eExpSql:         'fOdsYAS7zbKB1CYuf22Q-11',
+	eExpSpark:       'fOdsYAS7zbKB1CYuf22Q-12',
+	eOfframpSub:     'kf_Cia_N1QG3O1UruQM8-23',   // off-ramp → Subscribe Interface
+	eOfframpApi:     'kf_Cia_N1QG3O1UruQM8-24',   // off-ramp → API Interface
+	eOfframpToSource:'fOdsYAS7zbKB1CYuf22Q-7',    // off-ramp → Source System
+};
+
+// The script an editor would build in the admin. `at` is seconds; in the real
+// block these come from anchoring each step to a phrase in the narration.
+const STEPS = [
+	{ at: 0, camera: 'fit',
+	  caption: 'Two landing zones: the <b>On/Off-Ramp DLZ</b> on the left, and the <b>Domain DLZ</b> on the right.' },
+
+	{ at: 3.0, camera: [ 'source', 'onrampPort' ], padding: 200,
+	  pulse: [ 'source' ],
+	  caption: 'Data starts in a <b>source system</b>.' },
+
+	{ at: 6.0, camera: [ 'source', 'onramp' ], padding: 90,
+	  draw: [ 'eSourceToOnramp' ], flow: [ 'eSourceToOnramp' ],
+	  caption: 'Every source system gets its own <b>on-ramp data product</b>, one per system.' },
+
+	{ at: 10.0, camera: [ 'onramp' ], padding: 60,
+	  sequence: [ 'protoIn', 'rawStore', 'dqOnramp', 'rawToCanon' ],
+	  caption: 'Inside the on-ramp: <b>protocol transform</b> (file to stream), <b>raw storage</b>, a <b>DQ audit</b>, then <b>raw to canonical</b>.' },
+
+	{ at: 16.0, camera: [ 'onramp', 'publishPort', 'publishLabel' ], padding: 70,
+	  draw: [ 'ePublish' ], flow: [ 'ePublish' ], pulse: [ 'publishLabel' ],
+	  caption: 'The on-ramp publishes to the <b>streaming publish interface</b> of the domain data product.' },
+
+	{ at: 21.0, camera: [ 'onramp', 'apiPort', 'apiLabel' ], padding: 70,
+	  draw: [ 'eApiLookup' ], flow: [ [ 'eApiLookup', { dash: '4 14', speed: 55 } ] ], pulse: [ 'apiLabel' ],
+	  caption: 'While publishing it calls the <b>API interface</b> to look things up — primary keys, for instance.' },
+
+	{ at: 26.0, camera: [ 'domain' ], padding: 55,
+	  sequence: [ 'canonLoad', 'mdm', 'dqDomain', 'canonServe', 'rdbms', 'lakehouse' ],
+	  caption: 'The domain product runs <b>canonical load and policy enforcement</b>, <b>master data management</b>, a <b>DQ audit</b>, then <b>canonical data serve</b>.' },
+
+	{ at: 33.0, camera: [ 'sqlLabel', 'subLabel' ], padding: 150,
+	  pulse: [ 'sqlLabel', 'subLabel' ],
+	  caption: 'It serves through a <b>Lakehouse SQL interface</b> and a <b>Subscribe interface</b>.' },
+
+	{ at: 37.0, camera: [ 'domain', 'exp' ], padding: 70,
+	  draw: [ 'eSqlToExp', 'eSubToExp' ], flow: [ 'eSqlToExp', 'eSubToExp' ],
+	  caption: 'An <b>analytics experience data product</b> in the same domain consumes both.' },
+
+	{ at: 42.0, camera: [ 'exp' ], padding: 55,
+	  sequence: [ 'canonToExp', 'dqExp', 'mart', 'analyticServe' ],
+	  caption: 'It runs <b>canonical to experience</b>, audits, lands a <b>mart</b>, and serves analytics.' },
+
+	{ at: 48.0, camera: [ 'exp', 'consumer' ], padding: 90,
+	  draw: [ 'eExpSql', 'eExpSpark' ], flow: [ 'eExpSql', 'eExpSpark' ],
+	  caption: 'Consumers reach it over the <b>experience Lakehouse SQL</b> and <b>Spark</b> interfaces.' },
+
+	// The return path. Note the arrows point *at* the interfaces — that is the
+	// subscribe/call direction — while the data travels the other way, so the
+	// flow on eOfframpSub runs reversed.
+	{ at: 53.0, camera: [ 'subLabel', 'offramp' ], padding: 80,
+	  draw: [ 'eOfframpSub', 'eOfframpApi' ],
+	  flow: [ [ 'eOfframpSub', { dir: -1 } ], [ 'eOfframpApi', { dash: '4 14', speed: 55 } ] ],
+	  pulse: [ 'subLabel' ],
+	  caption: 'Going the other way, an <b>off-ramp data product</b> subscribes to the same domain product.' },
+
+	{ at: 59.0, camera: [ 'offramp' ], padding: 60,
+	  sequence: [ 'canonToRaw', 'rawStoreOut', 'dqOfframp', 'protoOut' ],
+	  caption: 'It reverses the journey: <b>canonical to raw</b>, raw storage, a <b>DQ audit</b>, then <b>protocol transform</b> back to file.' },
+
+	{ at: 65.0, camera: [ 'offrampPort', 'source' ], padding: 140,
+	  draw: [ 'eOfframpToSource' ], flow: [ 'eOfframpToSource' ], pulse: [ 'source' ],
+	  caption: 'And delivers it back out to a <b>source system</b>.' },
+
+	{ at: 70.0, camera: 'fit',
+	  caption: 'End to end &mdash; in through the <b>on-ramp</b>, across the <b>domain product</b>, out to <b>analytics</b> and back through the <b>off-ramp</b>.' },
+];
+const DURATION = 76;
+
+// ---------------------------------------------------------------- lookups
+const svg = document.querySelector( '.dgm svg' );
+const cam = svg.querySelector( '[data-dgm-camera]' );
+const capEl = document.querySelector( '.dgm-caption' );
+
+const missing = new Set();
+
+function cell( key ) {
+
+	const id = ID[ key ] || key;
+	const el = typeof id === 'string' ? svg.querySelector( `[data-cell-id="${ CSS.escape( id ) }"]` ) : null;
+	if ( ! el ) missing.add( String( key ) );
+	return el;
+
+}
+
+/* A draw.io connector is two paths in one cell: the line (fill="none") and the
+ * arrowhead (filled). Animating the cell as a whole would swing the head about;
+ * they have to be driven separately. */
+const lineOf = ( key ) => cell( key )?.querySelector( 'path[fill="none"]' ) || null;
+const headOf = ( key ) => [ ...( cell( key )?.querySelectorAll( 'path' ) || [] ) ]
+	.find( ( p ) => p.getAttribute( 'fill' ) && p.getAttribute( 'fill' ) !== 'none' );
+
+/* Only real geometry counts towards a bounding box.
+ *
+ * getBBox() on a draw.io cell is useless on its own: every label is a
+ * <foreignObject width="100%" height="100%">, and 100% resolves against the
+ * *viewport*, so any cell carrying a label reports a box the size of the whole
+ * diagram. Framing on that silently zooms every camera step back out to "fit".
+ * Measuring the drawn shapes instead sidesteps it. */
+const GEOMETRY = 'path,rect,ellipse,circle,polygon,polyline,line';
+
+function shapesOf( el ) {
+
+	const out = [ ...el.querySelectorAll( GEOMETRY ) ].filter( ( n ) => ! n.closest( 'foreignObject' ) );
+	return out.length ? out : [ el ];
+
+}
+
+/* Bounding box of `el` expressed in the camera group's own coordinates. Both
+ * CTMs include the camera transform, so it cancels and this stays correct
+ * whatever the camera is currently doing. */
+function bboxInCamera( el ) {
+
+	const pt = svg.createSVGPoint();
+	const inv = cam.getScreenCTM().inverse();
+	let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+
+	for ( const node of shapesOf( el ) ) {
+
+		let b;
+		try { b = node.getBBox(); } catch { continue; }
+		if ( ! b || ( ! b.width && ! b.height ) ) continue;
+		const m = inv.multiply( node.getScreenCTM() );
+		for ( const [ x, y ] of [ [ b.x, b.y ], [ b.x + b.width, b.y ],
+			[ b.x, b.y + b.height ], [ b.x + b.width, b.y + b.height ] ] ) {
+
+			pt.x = x; pt.y = y;
+			const p = pt.matrixTransform( m );
+			x0 = Math.min( x0, p.x ); y0 = Math.min( y0, p.y );
+			x1 = Math.max( x1, p.x ); y1 = Math.max( y1, p.y );
+
+		}
+
+	}
+	if ( ! Number.isFinite( x0 ) ) return null;
+	return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+
+}
+
+/* Camera steps name shapes, never coordinates — so the framing survives the
+ * diagram being edited, and is recomputed rather than stored. */
+function frame( targets, padding = 60 ) {
+
+	if ( targets === 'fit' ) return { x: 0, y: 0, scale: 1 };
+
+	let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+	for ( const key of targets ) {
+
+		const el = cell( key );
+		if ( ! el ) continue;
+		const b = bboxInCamera( el );
+		if ( ! b ) continue;
+		x0 = Math.min( x0, b.x ); y0 = Math.min( y0, b.y );
+		x1 = Math.max( x1, b.x + b.w ); y1 = Math.max( y1, b.y + b.h );
+
+	}
+	if ( ! Number.isFinite( x0 ) ) return { x: 0, y: 0, scale: 1 };
+
+	const w = x1 - x0 + padding * 2;
+	const h = y1 - y0 + padding * 2;
+	const s = Math.min( VIEW.w / w, VIEW.h / h, MAX_ZOOM );
+	return {
+		scale: s,
+		x: VIEW.w / 2 - s * ( x0 + ( x1 - x0 ) / 2 ),
+		y: VIEW.h / 2 - s * ( y0 + ( y1 - y0 ) / 2 ),
+	};
+
+}
+
+// ---------------------------------------------------------------- flow overlays
+/* Flow is NOT a timeline tween. An infinitely repeating tween has infinite
+ * duration, which would make the timeline unseekable — the exact property this
+ * trial is meant to preserve. Instead each flow is a cloned path whose dash
+ * offset is computed from the playhead, so it is correct at any t and free to
+ * scrub. */
+const flows = [];
+
+function addFlow( key, opts = {} ) {
+
+	const line = lineOf( key );
+	if ( ! line ) return;
+	const overlay = line.cloneNode( false );
+	overlay.removeAttribute( 'style' );          // drop draw.io's light-dark() stroke
+	overlay.setAttribute( 'stroke', opts.colour || '#ff7a18' );
+	overlay.setAttribute( 'stroke-width', opts.width || 3.5 );
+	overlay.setAttribute( 'stroke-linecap', 'round' );
+	overlay.setAttribute( 'fill', 'none' );
+	overlay.setAttribute( 'pointer-events', 'none' );
+	overlay.style.strokeDasharray = opts.dash || '16 26';
+	overlay.style.opacity = '0';
+	line.parentNode.insertBefore( overlay, line.nextSibling );
+	flows.push( { el: overlay, from: opts.from || 0, speed: opts.speed || 70, dir: opts.dir || 1 } );
+
+}
+
+function renderFlows( t ) {
+
+	for ( const f of flows ) {
+
+		const live = t >= f.from;
+		f.el.style.opacity = live ? String( Math.min( 1, ( t - f.from ) / 0.6 ) ) : '0';
+		// negative offset marches the dashes along the path's own direction;
+		// dir:-1 sends them back up it, for data arriving over a subscribe
+		if ( live ) f.el.style.strokeDashoffset = String( - ( t - f.from ) * f.speed * f.dir );
+
+	}
+
+}
+
+// ---------------------------------------------------------------- build
+function build() {
+
+	gsap.set( cam, { transformOrigin: '0px 0px' } );
+
+	const tl = gsap.timeline( { paused: true } );
+	tl.to( {}, { duration: DURATION }, 0 );   // dummy tween, pins the timeline's length
+
+	for ( const step of STEPS ) {
+
+		if ( step.camera ) {
+
+			const to = frame( step.camera, step.padding );
+			if ( step.at === 0 || REDUCED ) tl.set( cam, to, step.at );
+			else tl.to( cam, { ...to, duration: 1.7, ease: 'power2.inOut' }, step.at );
+
+		}
+
+		for ( const key of step.draw || [] ) {
+
+			const line = lineOf( key );
+			if ( ! line ) continue;
+			const head = headOf( key );
+			const len = line.getTotalLength();
+			if ( ! len ) {                       // unrendered path: degrade to a fade
+
+				tl.fromTo( line, { opacity: 0 }, { opacity: 1, duration: 0.9 }, step.at );
+
+			} else {
+
+				tl.fromTo( line,
+					{ strokeDasharray: len, strokeDashoffset: len },
+					{ strokeDashoffset: 0, duration: 1.4, ease: 'power1.inOut' }, step.at );
+
+			}
+			// the head is a separate shape and would otherwise sit waiting at the
+			// far end while the line is still on its way
+			if ( head ) tl.fromTo( head, { opacity: 0 }, { opacity: 1, duration: 0.3 }, step.at + 1.15 );
+
+		}
+
+		for ( const entry of step.flow || [] ) {
+
+			const [ key, opts ] = Array.isArray( entry ) ? entry : [ entry, {} ];
+			addFlow( key, { ...opts, from: step.at + 1.2 } );
+
+		}
+
+		for ( const key of step.pulse || [] ) {
+
+			const el = cell( key );
+			if ( el ) tl.to( el, {
+				scale: 1.08, transformOrigin: '50% 50%', duration: 0.35,
+				yoyo: true, repeat: 1, ease: 'sine.inOut',
+			}, step.at + 0.6 );
+
+		}
+
+		// walk the internals of a product, one beat each
+		( step.sequence || [] ).forEach( ( key, i ) => {
+
+			const el = cell( key );
+			if ( ! el ) return;
+			const at = step.at + 0.8 + i * 0.85;
+			tl.fromTo( el, { opacity: 0.25 }, { opacity: 1, duration: 0.5 }, at );
+			tl.to( el, {
+				scale: 1.05, transformOrigin: '50% 50%', duration: 0.3,
+				yoyo: true, repeat: 1, ease: 'sine.inOut',
+			}, at );
+
+		} );
+
+	}
+
+	return tl;
+
+}
+
+// ---------------------------------------------------------------- drive
+function main() {
+
+	const tl = build();
+
+	const playBtn = document.querySelector( '[data-play]' );
+	const seek = document.querySelector( '[data-seek]' );
+	const clock = document.querySelector( '[data-clock]' );
+	const chips = [ ...document.querySelectorAll( '[data-step]' ) ];
+
+	let playing = false;
+	let last = 0;
+	let t = 0;
+
+	function captionFor( time ) {
+
+		let cur = STEPS[ 0 ];
+		for ( const s of STEPS ) if ( s.at <= time ) cur = s;
+		return cur;
+
+	}
+
+	function render( time ) {
+
+		t = Math.max( 0, Math.min( DURATION, time ) );
+		tl.seek( t );                    // everything GSAP owns
+		renderFlows( t );                // everything derived from the playhead
+		const step = captionFor( t );
+		if ( capEl.dataset.at !== String( step.at ) ) {
+
+			capEl.dataset.at = String( step.at );
+			capEl.innerHTML = step.caption;
+
+		}
+		seek.value = String( Math.round( ( t / DURATION ) * 1000 ) );
+		clock.textContent = `${ t.toFixed( 1 ) }s / ${ DURATION }s`;
+		for ( const c of chips ) c.setAttribute( 'aria-current', String( Number( c.dataset.step ) === step.at ) );
+
+	}
+
+	function tick( now ) {
+
+		if ( playing ) {
+
+			render( t + ( now - last ) / 1000 );
+			if ( t >= DURATION ) setPlaying( false );
+
+		}
+		last = now;
+		requestAnimationFrame( tick );
+
+	}
+
+	function setPlaying( on ) {
+
+		playing = on && ! REDUCED;
+		playBtn.textContent = playing ? 'Pause' : 'Play';
+
+	}
+
+	playBtn.addEventListener( 'click', () => {
+
+		if ( t >= DURATION ) render( 0 );
+		setPlaying( ! playing );
+
+	} );
+	seek.addEventListener( 'input', () => {
+
+		setPlaying( false );
+		render( ( Number( seek.value ) / 1000 ) * DURATION );
+
+	} );
+	for ( const c of chips ) c.addEventListener( 'click', () => {
+
+		setPlaying( false );
+		render( Number( c.dataset.step ) );
+
+	} );
+
+	if ( REDUCED ) {
+
+		// Everything present, nothing moving, camera left on the whole diagram.
+		render( DURATION );
+		gsap.set( cam, frame( 'fit' ) );
+		playBtn.disabled = true;
+		playBtn.textContent = 'Reduced motion';
+
+	} else {
+
+		// ?t=<seconds> lands on a given moment, the way audioblog.js already does
+		// for narration. Also how the screenshots in the write-up were taken.
+		const t0 = Number( new URLSearchParams( location.search ).get( 't' ) );
+		render( Number.isFinite( t0 ) && t0 > 0 ? t0 : 0 );
+
+	}
+
+	requestAnimationFrame( tick );
+
+	// Bounding boxes are measured in CSS pixels via getScreenCTM, so a resize
+	// invalidates every camera target. Rebuild and land on the same playhead.
+	let resizeTimer;
+	addEventListener( 'resize', () => {
+
+		clearTimeout( resizeTimer );
+		resizeTimer = setTimeout( () => render( t ), 200 );
+
+	} );
+
+	if ( missing.size ) console.warn( 'diagram: steps target missing cells:', [ ...missing ] );
+	window.__dgm = { tl, render, frame, STEPS, missing };   // for screenshots and poking about
+
+}
+
+function boot() {
+
+	try {
+
+		main();
+
+	} catch ( err ) {
+
+		// The SVG ships in its final state, so a dead engine degrades to a
+		// static diagram rather than a blank one.
+		console.error( err );
+		capEl.innerHTML = `<span style="color:#ff9d9d">Animation engine failed: ${ err.message }</span>`;
+		document.querySelector( '[data-play]' ).disabled = true;
+
+	}
+
+}
+
+if ( document.readyState === 'loading' ) addEventListener( 'DOMContentLoaded', boot );
+else boot();
+
+</script>

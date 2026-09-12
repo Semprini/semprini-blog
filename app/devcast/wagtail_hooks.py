@@ -1,14 +1,17 @@
-from django.urls import path, reverse
+from django.urls import path, reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from wagtail import hooks
 from wagtail.admin.action_menu import ActionMenuItem
+from wagtail.admin.rich_text.editors.draftail import features as draftail_features
 from wagtail.admin.ui.tables import Column, DateColumn
+from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.widgets import PageListingButton
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from . import views
-from .models import AudioEntryPage, Rendition, Voice
+from .models import AudioEntryPage, Diagram, Rendition, Voice
+from .rich_text import ContentstateDiagramConversionRule, DiagramEmbedHandler
 
 
 class VoiceViewSet(SnippetViewSet):
@@ -50,6 +53,67 @@ class RenditionViewSet(SnippetViewSet):
     ]
 
 
+class DiagramViewSet(SnippetViewSet):
+    """Upload a draw.io export; ingest runs on save."""
+
+    model = Diagram
+    icon = "site"
+    menu_label = _("Diagrams")
+    menu_name = "diagrams"
+    list_display = ["title", "page", DateColumn("updated_at", label=_("Updated"))]
+    search_fields = ["title"]
+    add_to_admin_menu = True
+
+
+class DiagramChooserViewSet(ChooserViewSet):
+    model = Diagram
+    icon = "site"
+    choose_one_text = _("Choose a diagram")
+    choose_another_text = _("Choose another diagram")
+    edit_item_text = _("Edit this diagram")
+    per_page = 20
+
+
+diagram_chooser_viewset = DiagramChooserViewSet("devcast_diagram_chooser")
+
+
+@hooks.register("register_admin_viewset")
+def register_diagram_chooser_viewset():
+    return diagram_chooser_viewset
+
+
+@hooks.register("register_rich_text_features")
+def register_diagram_feature(features):
+    """Makes "Diagram" an insertable thing in every rich text body, puput's included."""
+    features.register_embed_type(DiagramEmbedHandler)
+    features.register_editor_plugin(
+        "draftail",
+        "diagram",
+        draftail_features.EntityFeature(
+            {
+                "type": "DIAGRAM",
+                "icon": "site",
+                "description": _("Diagram"),
+                "chooserUrls": {
+                    "diagramChooser": reverse_lazy("devcast_diagram_chooser:choose"),
+                },
+            },
+            js=[
+                # supplies window.CHOOSER_MODAL_ONLOAD_HANDLERS, which the
+                # ChooserViewSet modal above is driven by
+                "wagtailadmin/js/chooser-modal.js",
+                "devcast/js/diagram-chooser.js",
+            ],
+            css={"all": ["devcast/css/diagram-chooser.css"]},
+        ),
+    )
+    features.register_converter_rule(
+        "contentstate", "diagram", ContentstateDiagramConversionRule
+    )
+    features.default_features.append("diagram")
+
+
+register_snippet(DiagramViewSet)
 register_snippet(VoiceViewSet)
 register_snippet(RenditionViewSet)
 

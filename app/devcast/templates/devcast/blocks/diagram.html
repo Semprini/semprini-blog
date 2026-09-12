@@ -1,0 +1,3 @@
+{% load wagtailcore_tags %}
+{% include "devcast/embeds/diagram.html" with diagram=value.diagram %}
+{% if value.caption %}<p class="dgm-cap">{{ value.caption }}</p>{% endif %}

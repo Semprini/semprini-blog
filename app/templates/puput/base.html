@@ -53,6 +53,8 @@
 			}
 		</script>
 		<script type="module" src="{% static 'js/avatar.js' %}"></script>
+		{# Animated diagrams. The module fetches GSAP only if the page has one. #}
+		<script type="module" src="{% static 'js/diagram.js' %}"></script>
 
 
         {% if blog_page.header_image %}

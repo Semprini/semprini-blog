@@ -15,6 +15,7 @@ from wagtail import blocks
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.embeds.blocks import EmbedBlock
 from wagtail.images.blocks import ImageChooserBlock
+from wagtail.snippets.blocks import SnippetChooserBlock
 from wagtailmarkdown.blocks import MarkdownBlock
 
 _WHITESPACE = re.compile(r"\s+")
@@ -180,6 +181,30 @@ class QuoteBlock(NarratableBlock):
         label = "Quote"
 
 
+class DiagramBlock(NarratableBlock):
+    """A draw.io diagram, animated if it has a script.
+
+    The diagram itself is a snippet so one export can be used on several pages
+    and is only sanitised once. puput's rich text entries cannot host a block at
+    all, so they reach the same snippet through the ``diagram`` embed type in
+    ``devcast/rich_text.py``."""
+
+    diagram = SnippetChooserBlock("devcast.Diagram")
+    caption = blocks.CharBlock(required=False, max_length=250)
+    narration = blocks.TextBlock(
+        required=False,
+        help_text="Spoken while the diagram plays. Leave empty to skip it in narration.",
+    )
+
+    def narration_text(self, value):
+        return to_speech(value.get("narration") or value.get("caption"))
+
+    class Meta:
+        icon = "site"
+        template = "devcast/blocks/diagram.html"
+        label = "Diagram"
+
+
 class NarrationAsideBlock(NarratableBlock):
     """Spoken but not shown - lets narration bridge two visual blocks."""
 
@@ -200,6 +225,7 @@ def _block_types():
         ("video", VideoBlock()),
         ("code", CodeBlock()),
         ("model3d", Model3DBlock()),
+        ("diagram", DiagramBlock()),
         ("callout", CalloutBlock()),
         ("quote", QuoteBlock()),
     ]

@@ -1,0 +1,14 @@
+/* The placeholder shown in the rich text editor where a diagram sits. */
+.diagram-embed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px dashed #b3b3b3;
+    border-radius: 4px;
+    background: #f6f6f6;
+    color: #333;
+    font-size: 14px;
+}
+.diagram-embed__icon { font-size: 18px; line-height: 1; color: #5b93d3; }
+.diagram-embed__label { font-weight: 600; }

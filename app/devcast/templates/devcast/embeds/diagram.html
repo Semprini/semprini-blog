@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+The SVG is inlined because an <img> exposes nothing to script, and it ships in
+its FINAL state: diagram.js sets the "from" states. A reader with no JS, or one
+who has asked for reduced motion, still gets the whole diagram.
+
+The script rides in a nested application/json tag rather than a data- attribute,
+the way audioblog.js carries its cue track: no attribute escaping to get wrong,
+and diagram.js finds it by scoping the lookup to this figure.
+{% endcomment %}
+<figure class="dgm{% if diagram.steps %} dgm--animated{% endif %}" data-dgm>
+    {{ diagram.markup|safe }}
+    {% if diagram.steps %}
+        {{ diagram.script|json_script:"" }}
+        <figcaption class="dgm-caption" aria-live="polite"></figcaption>
+        <div class="dgm-bar">
+            <button type="button" class="dgm-play" data-dgm-play>{% translate "Play" %}</button>
+            <input type="range" class="dgm-seek" data-dgm-seek min="0" max="1000" value="0"
+                   aria-label="{% translate 'Scrub the diagram animation' %}">
+            <span class="dgm-clock" data-dgm-clock>0.0s</span>
+        </div>
+    {% endif %}
+    {% if diagram.title %}<figcaption class="dgm-title">{{ diagram.title }}</figcaption>{% endif %}
+</figure>
