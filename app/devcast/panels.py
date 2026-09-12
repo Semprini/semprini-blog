@@ -55,3 +55,32 @@ class NarrationStatusPanel(Panel):
                 and self.request.user.has_perm("devcast.render_narration")
             )
             return context
+
+
+class DiagramTargetsPanel(Panel):
+    """Lists what a diagram's animation script is allowed to target.
+
+    Writing a script means naming shapes and connectors by their draw.io cell
+    id, and half of them carry no label at all - every connector and every
+    interface port. Without this list in front of you the ids are unguessable.
+    """
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("heading", _("Targets"))
+        super().__init__(**kwargs)
+
+    class BoundPanel(Panel.BoundPanel):
+        template_name = "devcast/admin/diagram_targets_panel.html"
+
+        def is_shown(self):
+            return bool(self.instance and self.instance.pk and self.instance.cell_index)
+
+        def get_context_data(self, parent_context=None):
+            context = super().get_context_data(parent_context)
+            index = self.instance.cell_index or []
+            context["shapes"] = [c for c in index if c["kind"] == "shape"]
+            context["edges"] = [c for c in index if c["kind"] == "edge"]
+            context["unnamed"] = sum(1 for c in index if not c["label"])
+            context["stats"] = self.instance.stats or {}
+            context["aliases"] = (self.instance.script or {}).get("targets") or {}
+            return context

@@ -95,17 +95,39 @@ whose `FINDINGS.md` is the reference for anything UI-shaped.
   animatable). The sanitiser is an allowlist over a parsed tree — never regex over a string, and
   never at render time.
 - `app/static/js/diagram.js` — one paused GSAP timeline per figure, playhead driven from
-  outside. GSAP is fetched from cdnjs only when a page actually has an animated diagram.
-- Load a diagram (there is no script editor yet):
-  ```bash
-  manage.py import_diagram <file.svg> --title "..." --model <file.drawio> --page <PageName> --script <script.json>
-  ```
+  outside. GSAP is **vendored** at `app/static/js/gsap.min.js` (resolved via `import.meta.url`,
+  so it works from S3) and injected only when a page actually has an animated diagram.
 
-**Outstanding:** the Draftail chooser (`devcast/static/devcast/js/diagram-chooser.js`) is the one
-piece never exercised in a browser — registration, chooser URL and the contentstate round trip
-are verified server-side only. There is no editor for the animation script. Animating
-"Data Products E2E" in entry 69 needs an SVG export of it; the post currently has a PNG
-(image 84) and that diagram is not in `Data_Architecture.drawio`.
+### Adding a diagram — the whole process
+
+Everything one diagram needs lives on **one snippet**. There is no zip, and nothing goes in
+Documents.
+
+1. **Snippets → Diagrams → Add.** Upload the `.svg` export. Add the `.drawio` too if you have it:
+   it is the only thing that names the connectors, which are unlabelled in the SVG. Save.
+   Sanitising, indexing and the camera wrap all run on save.
+2. **Read the Targets panel** that appears after saving. It lists every shape and connector with
+   the key a script may name. Half of them have no label of their own, so this list is the only
+   way to know what the ids are.
+3. **Paste an animation script** into the Script field (JSON, validated on save — it rejects
+   unknown targets rather than silently rendering a still diagram). Leave it empty for a still
+   diagram, which is a perfectly good outcome.
+4. **Put it on a page.** Ordinary puput posts: the **Diagram** button in the rich text toolbar.
+   Narrated `AudioEntryPage`s: the **Diagram** block in `sections` — *not* the rich-text embed,
+   because those pages render `sections` and ignore `body`.
+
+`manage.py import_diagram <svg> --title … --model … --page … --script …` does steps 1–3 from
+files, which is how the example was loaded.
+
+**On a narrated page the diagram follows the voice.** `DiagramBlock.narration_text()` returns the
+step captions, so the audio speaks them; `diagram.js` then matches each caption against the word
+timings in the cue track and starts that step exactly where it is spoken. `script["speed"]` only
+governs standalone playback — when narration drives it, the voice sets the pace.
+
+**Outstanding:** the script is raw JSON, not the step-builder of §6 — no target dropdown, no
+preview. The Draftail chooser (`devcast/static/devcast/js/diagram-chooser.js`) is the one piece
+never exercised in a browser. Animating the real "Data Products E2E" needs an SVG export of it;
+entry 69 currently shows the Concept diagram under that name.
 
 ## Local development
 

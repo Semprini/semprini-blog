@@ -197,7 +197,21 @@ class DiagramBlock(NarratableBlock):
     )
 
     def narration_text(self, value):
-        return to_speech(value.get("narration") or value.get("caption"))
+        """Read the animation's own captions aloud, in order.
+
+        This is what lets the diagram follow the narration precisely: because
+        the spoken words *are* the captions, the player can find where each step
+        is mentioned in the word timings and start it exactly there, instead of
+        replaying a fixed timeline that drifts against the voice."""
+        if value.get("narration"):
+            return to_speech(value["narration"])
+        diagram = value.get("diagram")
+        captions = [
+            to_speech(step.get("caption"))
+            for step in (getattr(diagram, "steps", None) or [])
+            if step.get("caption")
+        ]
+        return " ".join(c for c in captions if c) or to_speech(value.get("caption"))
 
     class Meta:
         icon = "site"

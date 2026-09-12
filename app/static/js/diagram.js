@@ -9,12 +9,44 @@
 // See §6 of docs/devcast-design.md; the findings that shaped it are in
 // examples/data-architecture/FINDINGS.md.
 
-const GSAP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js';
+// Vendored beside this module rather than pulled from a CDN, matching how
+// three.js is served. import.meta.url resolves it correctly whether static is
+// served from Django or from the S3 bucket.
+const GSAP_URL = new URL( 'gsap.min.js', import.meta.url ).href;
 const REDUCED = matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 const MAX_ZOOM = 3.0;          // never magnify a 2px stroke into a slab
 const GEOMETRY = 'path,rect,ellipse,circle,polygon,polyline,line';
 
 let gsapPromise = null;
+
+// The narration track audioblog.js publishes. Read directly rather than passed
+// in, so neither module has to import the other.
+function cueTrack() {
+
+	const node = document.getElementById( 'devcast-cue-track' );
+	if ( ! node ) return null;
+	try { return JSON.parse( node.textContent ); } catch { return null; }
+
+}
+
+const normalise = ( s ) => String( s || '' ).toLowerCase()
+	.replace( /[^a-z0-9]+/g, ' ' ).trim().split( ' ' ).filter( Boolean );
+
+// First index at or after `from` where `hay` contains all of `needle` in order.
+function findRun( hay, needle, from ) {
+
+	if ( ! needle.length ) return - 1;
+	const n = Math.min( needle.length, 4 );      // a few words is enough to place it
+	for ( let i = from; i <= hay.length - n; i ++ ) {
+
+		let ok = true;
+		for ( let j = 0; j < n; j ++ ) if ( hay[ i + j ] !== needle[ j ] ) { ok = false; break; }
+		if ( ok ) return i;
+
+	}
+	return - 1;
+
+}
 
 // Only fetched when a page actually has an animated diagram on it.
 function loadGsap() {
@@ -45,8 +77,18 @@ class Diagram {
 
 		const json = figure.querySelector( 'script[type="application/json"]' );
 		const script = json ? JSON.parse( json.textContent ) : {};
-		this.steps = script.steps || [];
-		this.duration = script.duration || 0;
+		/* One knob for pace. Halving every `at` alone would not work: the
+		 * engine's own durations (a draw, a camera move, a sequence stagger)
+		 * are fixed, so the steps would start overlapping. `speed` divides
+		 * both, keeping the shape of the animation and only changing its
+		 * tempo. */
+		this.speed = Number( script.speed ) > 0 ? Number( script.speed ) : 1;
+		this.steps = ( script.steps || [] ).map(
+			( s ) => ( { ...s, at: ( s.at || 0 ) / this.speed } ) );
+		this.duration = ( script.duration || 0 ) / this.speed;
+		// A looping diagram is decoration rather than narration: it plays itself
+		// while on screen and has nothing to say, so it carries no captions.
+		this.loop = Boolean( script.loop );
 		// A script may name targets by alias; the diagram knows them by cell id.
 		this.aliases = script.targets || {};
 		this.view = { w: this.svg.viewBox.baseVal.width, h: this.svg.viewBox.baseVal.height };
@@ -175,10 +217,62 @@ class Diagram {
 		for ( const f of this.flows ) {
 
 			const live = t >= f.from;
-			f.el.style.opacity = live ? String( Math.min( 1, ( t - f.from ) / 0.6 ) ) : '0';
-			if ( live ) f.el.style.strokeDashoffset = String( - ( t - f.from ) * f.speed * f.dir );
+			f.el.style.opacity = live
+				? String( Math.min( 1, ( t - f.from ) / ( 0.6 / this.speed ) ) ) : '0';
+			if ( live ) f.el.style.strokeDashoffset =
+				String( - ( t - f.from ) * f.speed * f.dir * this.speed );
 
 		}
+
+	}
+
+	/* Put each step where its caption is actually spoken.
+	 *
+	 * The block's narration is the captions themselves (see DiagramBlock in
+	 * blocks.py), so every step's words appear in the word timings in order.
+	 * Matching against them beats replaying the authored timeline, which was
+	 * written against nothing and drifts as soon as the voice or its pace
+	 * changes. Falls back to the authored `at` for any step it cannot place. */
+	anchorTo( cue, words ) {
+
+		if ( ! cue || ! words || ! words.length ) return false;
+		const end = cue.end == null ? Infinity : cue.end;
+		const win = words.filter( ( w ) => w[ 0 ] >= cue.start - 0.05 && w[ 0 ] < end );
+		if ( ! win.length ) return false;
+
+		/* One spoken word can be several tokens - "on-ramp" is "on" + "ramp" -
+		 * and a caption is tokenised the same way, so they only line up if both
+		 * sides are flattened. Keeping just the first token silently lost every
+		 * caption containing a hyphen. `times` maps each token back to the
+		 * start of the word it came from. */
+		const spoken = [];
+		const times = [];
+		for ( const w of win ) {
+
+			for ( const token of normalise( w[ 2 ] ) ) { spoken.push( token ); times.push( w[ 0 ] ); }
+
+		}
+
+		let from = 0;
+		let placed = 0;
+		for ( const step of this.steps ) {
+
+			const caption = normalise( step.caption );
+			if ( ! caption.length ) continue;
+			const hit = findRun( spoken, caption, from );
+			if ( hit < 0 ) continue;
+			step.at = Math.max( 0, times[ hit ] - cue.start );
+			from = hit + 1;
+			placed ++;
+
+		}
+		if ( ! placed ) return false;
+
+		this.steps.sort( ( a, b ) => a.at - b.at );
+		this.duration = Math.max( ( end === Infinity ? 0 : end ) - cue.start,
+			this.steps[ this.steps.length - 1 ].at + 2 );
+		this.anchored = placed;
+		return true;
 
 	}
 
@@ -186,6 +280,7 @@ class Diagram {
 
 		const { gsap } = this;
 		gsap.set( this.cam, { transformOrigin: '0px 0px' } );
+		const k = this.speed;
 		const tl = gsap.timeline( { paused: true } );
 		tl.to( {}, { duration: this.duration }, 0 );     // pins the timeline's length
 
@@ -197,7 +292,7 @@ class Diagram {
 
 				const to = this.frame( step.camera, step.padding );
 				if ( at === 0 || REDUCED ) tl.set( this.cam, to, at );
-				else tl.to( this.cam, { ...to, duration: 1.7, ease: 'power2.inOut' }, at );
+				else tl.to( this.cam, { ...to, duration: 1.7 / k, ease: 'power2.inOut' }, at );
 
 			}
 
@@ -214,23 +309,23 @@ class Diagram {
 
 					tl.fromTo( line,
 						{ strokeDasharray: len, strokeDashoffset: len },
-						{ strokeDashoffset: 0, duration: 1.4, ease: 'power1.inOut' }, at );
+						{ strokeDashoffset: 0, duration: 1.4 / k, ease: 'power1.inOut' }, at );
 
 				} else {
 
-					tl.fromTo( line, { opacity: 0 }, { opacity: 1, duration: 0.9 }, at );
+					tl.fromTo( line, { opacity: 0 }, { opacity: 1, duration: 0.9 / k }, at );
 
 				}
 				// the head would otherwise sit waiting at the far end while the
 				// line is still on its way
-				if ( head ) tl.fromTo( head, { opacity: 0 }, { opacity: 1, duration: 0.3 }, at + 1.15 );
+				if ( head ) tl.fromTo( head, { opacity: 0 }, { opacity: 1, duration: 0.3 / k }, at + 1.15 / k );
 
 			}
 
 			for ( const entry of step.flow || [] ) {
 
 				const [ key, opts ] = Array.isArray( entry ) ? entry : [ entry, {} ];
-				this.addFlow( key, { ...opts, from: at + 1.2 } );
+				this.addFlow( key, { ...opts, from: at + 1.2 / k } );
 
 			}
 
@@ -238,21 +333,33 @@ class Diagram {
 
 				const el = this.cell( key );
 				if ( el ) tl.to( el, {
-					scale: 1.08, transformOrigin: '50% 50%', duration: 0.35,
+					scale: 1.08, transformOrigin: '50% 50%', duration: 0.35 / k,
 					yoyo: true, repeat: 1, ease: 'sine.inOut',
-				}, at + 0.6 );
+				}, at + 0.6 / k );
 
 			}
+
+			/* Reveal a group of shapes. Lightly staggered, because a panel that
+			 * wipes in reads better than one that pops. */
+			( step.appear || [] ).forEach( ( key, i ) => {
+
+				const el = this.cell( key );
+				if ( ! el ) return;
+				tl.fromTo( el, { opacity: 0 },
+					{ opacity: 1, duration: 0.5 / k, ease: 'power1.out' },
+					at + ( i * 0.04 ) / k );
+
+			} );
 
 			// walk the internals of a container, one beat each
 			( step.sequence || [] ).forEach( ( key, i ) => {
 
 				const el = this.cell( key );
 				if ( ! el ) return;
-				const beat = at + 0.8 + i * 0.85;
-				tl.fromTo( el, { opacity: 0.25 }, { opacity: 1, duration: 0.5 }, beat );
+				const beat = at + ( 0.8 + i * 0.85 ) / k;
+				tl.fromTo( el, { opacity: 0.25 }, { opacity: 1, duration: 0.5 / k }, beat );
 				tl.to( el, {
-					scale: 1.05, transformOrigin: '50% 50%', duration: 0.3,
+					scale: 1.05, transformOrigin: '50% 50%', duration: 0.3 / k,
 					yoyo: true, repeat: 1, ease: 'sine.inOut',
 				}, beat );
 
@@ -325,8 +432,10 @@ function wire( diagram ) {
 
 		if ( playing ) {
 
-			diagram.render( diagram.t + ( now - last ) / 1000 );
-			if ( diagram.t >= diagram.duration ) setPlaying( false );
+			const next = diagram.t + ( now - last ) / 1000;
+			if ( next < diagram.duration ) diagram.render( next );
+			else if ( diagram.loop ) diagram.render( next - diagram.duration );
+			else { diagram.render( diagram.duration ); setPlaying( false ); }
 
 		}
 		last = now;
@@ -354,19 +463,34 @@ function wire( diagram ) {
 
 	} );
 
-	// Where the page is narrated, the narration owns the playhead: audioblog.js
-	// emits devcast:time on every timeupdate and after every seek.
-	document.addEventListener( 'devcast:time', ( event ) => {
+	// Where the page is narrated, the narration owns the playhead.
+	if ( diagram.cue ) {
 
-		const cue = figure.closest( '[data-cue-id]' );
-		if ( ! cue ) return;
-		setPlaying( false );
-		diagram.render( event.detail.time - ( Number( cue.dataset.cueStart ) || 0 ) );
+		document.addEventListener( 'devcast:time', ( event ) => {
 
-	} );
+			setPlaying( false );
+			diagram.render( event.detail.time - diagram.cue.start );
+
+		} );
+		// Two things driving one playhead would fight; the audio wins.
+		if ( playBtn ) playBtn.hidden = true;
+		figure.classList.add( 'dgm--narrated' );
+
+	}
 
 	diagram.render( 0 );
 	requestAnimationFrame( tick );
+
+	if ( diagram.loop && ! diagram.cue ) {
+
+		// Autoplay, but never off-screen: an animation nobody is looking at is
+		// just battery. Also lets the reader pause it.
+		const io = new IntersectionObserver(
+			( entries ) => setPlaying( entries[ 0 ].isIntersecting ),
+			{ threshold: 0.25 } );
+		io.observe( figure );
+
+	}
 
 	let resizeTimer;
 	addEventListener( 'resize', () => {
@@ -414,6 +538,16 @@ async function start() {
 
 			const diagram = new Diagram( figure, gsap );
 			if ( ! diagram.steps.length || ! diagram.cam ) continue;
+
+			// If this figure sits in a narrated section, take the step times
+			// from where the narration actually says them.
+			const track = cueTrack();
+			const cueEl = figure.closest( '[data-cue-id]' );
+			const cue = track && cueEl
+				? ( track.cues || [] ).find( ( c ) => c.id === cueEl.dataset.cueId )
+				: null;
+			if ( cue && diagram.anchorTo( cue, track.words ) ) diagram.cue = cue;
+
 			diagram.build();
 			wire( diagram );
 

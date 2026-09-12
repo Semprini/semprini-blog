@@ -423,7 +423,6 @@
 /* An animated draw.io export. The SVG is inlined so it can be animated; it
    ships in its final state, so these styles must never hide anything. */
 .dgm {
-  position: relative;
   margin: 1.6em 0;
   background: #fff;
   border-radius: 6px;
@@ -437,6 +436,9 @@
      this stops a themed host page pulling them back. */
   color-scheme: light;
 }
+/* Only the drawing is the positioning context for the step captions; the
+   controls and title flow underneath it. */
+.dgm-stage { position: relative; }
 .dgm-caption {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -465,3 +467,5 @@
 .dgm-clock { font-variant-numeric: tabular-nums; color: #99a0ab; font-size: 12px; min-width: 46px; }
 .dgm-title { padding: 8px 12px; font-size: 13px; color: #666; }
 .dgm-cap { font-size: 14px; color: #666; margin-top: -1em; }
+/* Narration owns the playhead here, so the scrubber is a position readout. */
+.dgm--narrated .dgm-seek { pointer-events: none; opacity: .65; }

@@ -62,7 +62,10 @@ class DiagramViewSet(SnippetViewSet):
     menu_name = "diagrams"
     list_display = ["title", "page", DateColumn("updated_at", label=_("Updated"))]
     search_fields = ["title"]
-    add_to_admin_menu = True
+    # Wagtail hides a snippet from the Snippets index once it has its own menu
+    # item (get_snippet_models_for_index_view), and Voices/Narrations here are
+    # already under Snippets. Stay consistent and findable.
+    add_to_admin_menu = False
 
 
 class DiagramChooserViewSet(ChooserViewSet):

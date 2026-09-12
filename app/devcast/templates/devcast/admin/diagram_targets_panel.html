@@ -1,0 +1,45 @@
+{% load i18n %}
+{% comment %}
+What an animation script may name. Half a draw.io export's cells carry no label
+of their own - every connector and every interface port - so the ids are the
+only handle, and they are unguessable without this list.
+{% endcomment %}
+<div class="help-block help-info">
+    <p>
+        {% blocktranslate with cells=stats.cells edges=stats.edges %}{{ cells }} cells indexed, {{ edges }} of them connectors.{% endblocktranslate %}
+        {% if unnamed %}
+            {% blocktranslate %}{{ unnamed }} have no label in the SVG — upload the .drawio above to name the connectors.{% endblocktranslate %}
+        {% endif %}
+    </p>
+</div>
+
+{% if aliases %}
+    <p class="help-block">
+        {% translate "This script also defines its own short names for targets:" %}
+        {% for name, key in aliases.items %}<code>{{ name }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
+    </p>
+{% endif %}
+
+<details>
+    <summary>{% blocktranslate count n=shapes|length %}{{ n }} shape{% plural %}{{ n }} shapes{% endblocktranslate %}</summary>
+    <table class="listing">
+        <thead><tr><th>{% translate "Target key" %}</th><th>{% translate "Label" %}</th></tr></thead>
+        <tbody>
+        {% for cell in shapes %}
+            <tr><td><code>{{ cell.key }}</code></td><td>{{ cell.label|default:"—" }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</details>
+
+<details>
+    <summary>{% blocktranslate count n=edges|length %}{{ n }} connector{% plural %}{{ n }} connectors{% endblocktranslate %}</summary>
+    <table class="listing">
+        <thead><tr><th>{% translate "Target key" %}</th><th>{% translate "Label" %}</th></tr></thead>
+        <tbody>
+        {% for cell in edges %}
+            <tr><td><code>{{ cell.key }}</code></td><td>{{ cell.label|default:"—" }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</details>

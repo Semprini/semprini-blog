@@ -153,13 +153,27 @@ function start() {
 		if ( audio.readyState >= HTMLMediaElement.HAVE_METADATA ) apply();
 		else audio.addEventListener( 'loadedmetadata', apply, { once: true } );
 
+		// Don't wait for the next timeupdate: a click on a section should move
+		// everything that follows the narration at once.
+		publishTime( target );
+
 		if ( play ) audio.play().catch( () => {} );
 		else if ( audio.readyState === HTMLMediaElement.HAVE_NOTHING ) audio.load();
 
 	}
 
+	// Anything else that needs to follow the narration subscribes to this rather
+	// than to the audio element, so the player owns the playhead and stays the
+	// only thing that knows about the <audio> tag. diagram.js uses it.
+	function publishTime( time ) {
+
+		document.dispatchEvent( new CustomEvent( 'devcast:time', { detail: { time } } ) );
+
+	}
+
 	audio.addEventListener( 'timeupdate', () => {
 
+		publishTime( audio.currentTime );
 		setActive( activeCueIndex( cues, audio.currentTime ) );
 		atLabel.textContent = formatTime( audio.currentTime );
 		const total = duration();

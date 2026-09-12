@@ -1,0 +1,130 @@
+{
+ "loop": true,
+ "duration": 14,
+ "steps": [
+  {
+   "at": 0.0,
+   "flow": [
+    [
+     "0",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-14",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-25",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-28",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-29",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-3",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-5",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "0UGvR22cpxOxPkpBHoht-7",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "1",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ],
+    [
+     "QD_1u9uqRuat_YUQg7xP-1",
+     {
+      "speed": 55,
+      "dash": "10 18"
+     }
+    ]
+   ]
+  },
+  {
+   "at": 3.5,
+   "appear": [
+    "dc25-a-cloud",
+    "dc25-a-domain",
+    "dc25-a-hasura",
+    "dc25-a-hive",
+    "dc25-a-kafka",
+    "dc25-a-lh1",
+    "dc25-a-lh1b",
+    "dc25-a-lh2",
+    "dc25-a-lh2b",
+    "dc25-a-lh3",
+    "dc25-a-lh3b",
+    "dc25-a-minio",
+    "dc25-a-net",
+    "dc25-a-pg",
+    "dc25-a-repl",
+    "dc25-a-title",
+    "dc25-a-trino",
+    "dc25-a-vol"
+   ]
+  },
+  {
+   "at": 7.5,
+   "appear": [
+    "dc25-b-ab-repl",
+    "dc25-b-cc-gqlc",
+    "dc25-b-cc-stream",
+    "dc25-b-domain",
+    "dc25-b-g-airbyte",
+    "dc25-b-g-confluent",
+    "dc25-b-g-hasura",
+    "dc25-b-g-neon",
+    "dc25-b-g-snow",
+    "dc25-b-hasura-sg",
+    "dc25-b-iceberg",
+    "dc25-b-l-airbyte",
+    "dc25-b-l-confluent",
+    "dc25-b-l-hasura",
+    "dc25-b-l-neon",
+    "dc25-b-l-snow",
+    "dc25-b-neon-pg",
+    "dc25-b-polaris",
+    "dc25-b-snowpark",
+    "dc25-b-title",
+    "dc25-divider"
+   ]
+  }
+ ]
+}

@@ -20,7 +20,7 @@ from wagtailmarkdown.fields import MarkdownField
 
 from . import conf
 from .blocks import NARRATABLE_BLOCKS, SHOWCASE_BLOCKS
-from .panels import NarrationStatusPanel, without_fields
+from .panels import DiagramTargetsPanel, NarrationStatusPanel, without_fields
 
 # Which Page class the devcast page types extend is a deployment decision: this
 # site grafts them onto puput's EntryPage so they inherit its URLs, feeds and
@@ -761,9 +761,10 @@ class Diagram(models.Model):
     and has to be sanitised. That happens here, on save, rather than at render
     time where a miss would go straight to the reader.
 
-    ``script`` holds the animation steps. There is no editor for it yet (see
-    §6 of docs/devcast-design.md); ``import_diagram`` loads one from a file, and
-    an empty script simply renders the diagram as a static picture.
+    ``script`` holds the animation steps. Until the step-builder UI exists
+    (§6 of docs/devcast-design.md) it is edited as JSON here, next to the
+    upload, so everything one diagram needs lives on one form. An empty script
+    renders the diagram as a static picture, which is a perfectly good outcome.
     """
 
     title = models.CharField(max_length=120, verbose_name=_("title"))
@@ -790,7 +791,15 @@ class Diagram(models.Model):
 
     markup = models.TextField(blank=True, editable=False)
     cell_index = models.JSONField(default=list, blank=True, editable=False)
-    script = models.JSONField(default=dict, blank=True, editable=False)
+    script = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("animation script"),
+        help_text=_(
+            "Optional. Leave empty for a still diagram. Targets are the keys listed "
+            "under Targets below."
+        ),
+    )
     stats = models.JSONField(default=dict, blank=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -799,6 +808,8 @@ class Diagram(models.Model):
         FieldPanel("source"),
         FieldPanel("model_source"),
         FieldPanel("page"),
+        DiagramTargetsPanel(),
+        FieldPanel("script"),
     ]
 
     class Meta:
@@ -827,6 +838,31 @@ class Diagram(models.Model):
         self.markup, self.cell_index, self.stats = ingest(
             svg, self._read(self.model_source), self.page or None
         )
+
+    def clean(self):
+        """Catch a script that will not do anything, while the editor can still fix it.
+
+        The alternative is a silently static diagram on a published page and a
+        console warning nobody reads."""
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        script = self.script or {}
+        if not script:
+            return
+        if not isinstance(script, dict) or not isinstance(script.get("steps"), list):
+            raise ValidationError({"script": _('Expected an object with a "steps" list.')})
+        for i, step in enumerate(script["steps"]):
+            if not isinstance(step, dict):
+                raise ValidationError({"script": _("Step %(n)d is not an object.") % {"n": i}})
+        # Targets can only be checked once the SVG has been indexed, which
+        # happens on save; on a first save there is nothing to check against.
+        if self.cell_index:
+            missing = self.missing_targets()
+            if missing:
+                raise ValidationError({"script": _(
+                    "These targets are not in the diagram: %(keys)s"
+                ) % {"keys": ", ".join(missing[:8])}})
 
     def save(self, *args, **kwargs):
         self.rebuild()

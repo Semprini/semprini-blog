@@ -7,12 +7,23 @@ who has asked for reduced motion, still gets the whole diagram.
 The script rides in a nested application/json tag rather than a data- attribute,
 the way audioblog.js carries its cue track: no attribute escaping to get wrong,
 and diagram.js finds it by scoping the lookup to this figure.
+
+`caption` overrides the diagram's own title, so a block can label it in context
+without the title appearing twice.
 {% endcomment %}
 <figure class="dgm{% if diagram.steps %} dgm--animated{% endif %}" data-dgm>
-    {{ diagram.markup|safe }}
+    {# The step captions overlay the drawing, so only the drawing is the        #}
+    {# positioning context - otherwise they land on top of the controls below.  #}
+    <div class="dgm-stage">
+        {{ diagram.markup|safe }}
+        {% if diagram.steps %}
+            {# a div, not a figcaption: this narrates the animation, and a       #}
+            {# figure may only have one caption, which is the title below.       #}
+            <div class="dgm-caption" aria-live="polite"></div>
+        {% endif %}
+    </div>
     {% if diagram.steps %}
         {{ diagram.script|json_script:"" }}
-        <figcaption class="dgm-caption" aria-live="polite"></figcaption>
         <div class="dgm-bar">
             <button type="button" class="dgm-play" data-dgm-play>{% translate "Play" %}</button>
             <input type="range" class="dgm-seek" data-dgm-seek min="0" max="1000" value="0"
@@ -20,5 +31,6 @@ and diagram.js finds it by scoping the lookup to this figure.
             <span class="dgm-clock" data-dgm-clock>0.0s</span>
         </div>
     {% endif %}
-    {% if diagram.title %}<figcaption class="dgm-title">{{ diagram.title }}</figcaption>{% endif %}
+    {% firstof caption diagram.title as label %}
+    {% if label %}<figcaption class="dgm-title">{{ label }}</figcaption>{% endif %}
 </figure>

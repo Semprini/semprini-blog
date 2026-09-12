@@ -1,4 +1,5 @@
 {
+ "speed": 2,
  "targets": {
   "zoneOnramp": "jL--N1qoml8gLBs9-66e-5",
   "zoneDomain": "jL--N1qoml8gLBs9-66e-4",
@@ -95,7 +96,7 @@
     "dqOnramp",
     "rawToCanon"
    ],
-   "caption": "Inside the on-ramp: protocol transform (file to stream), raw storage, a DQ audit, then raw to canonical."
+   "caption": "Inside the on-ramp: protocol transform (e.g. file to stream), raw storage, a DQ audit, then raw to canonical."
   },
   {
    "at": 16,
@@ -139,7 +140,7 @@
    "pulse": [
     "apiLabel"
    ],
-   "caption": "While publishing it calls the API interface to look things up — primary keys, for instance."
+   "caption": "While publishing it calls the API interface to look things up \u2014 primary keys, for instance."
   },
   {
    "at": 26,
@@ -284,7 +285,7 @@
   {
    "at": 70,
    "camera": "fit",
-   "caption": "End to end &mdash; in through the on-ramp, across the domain product, out to analytics and back through the off-ramp."
+   "caption": "End to end - in through the on-ramp, across the domain product, out to analytics and back through the off-ramp."
   }
  ],
  "duration": 76

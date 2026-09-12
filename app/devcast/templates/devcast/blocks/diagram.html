@@ -1,3 +1,5 @@
-{% load wagtailcore_tags %}
-{% include "devcast/embeds/diagram.html" with diagram=value.diagram %}
-{% if value.caption %}<p class="dgm-cap">{{ value.caption }}</p>{% endif %}
+{% comment %}
+The block's caption replaces the diagram's own title rather than adding to it,
+so a diagram reused on several pages can be labelled differently on each.
+{% endcomment %}
+{% include "devcast/embeds/diagram.html" with diagram=value.diagram caption=value.caption %}

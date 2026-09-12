@@ -19,7 +19,10 @@ by the trial in ``examples/data-architecture`` (see its FINDINGS.md):
   interface port - so ``index()`` synthesises names where it can.
 """
 
+import base64
 import re
+import urllib.parse
+import zlib
 
 from lxml import etree
 
@@ -38,6 +41,11 @@ ALLOWED = {
 }
 ON_ATTR = re.compile(r"^on", re.I)
 URL_ATTRS = {"href", f"{{{XLINK_NS}}}href", "src"}
+# Artwork pasted into a diagram arrives as a data: URI on an <image>. Refusing
+# those silently deletes the picture - which is how five vendor logos went
+# missing. Safe to keep: a browser renders anything referenced from <image> in
+# secure static mode, so even an SVG payload gets no script and no network.
+DATA_IMAGE = re.compile(r"^data:image/(png|jpe?g|gif|webp|svg\+xml)[;,]", re.I)
 # any url() that is not a same-document #fragment, plus @import
 CSS_DANGER = re.compile(r"@import|url\s*\(\s*['\"]?\s*(?!#)", re.I)
 GEOMETRY = ("path", "rect", "ellipse", "circle", "polygon", "polyline", "line")
@@ -84,7 +92,11 @@ def sanitise(root):
         for name, value in list(el.attrib.items()):
             bad = bool(ON_ATTR.match(_local(name)))
             if not bad and name in URL_ATTRS:
-                bad = not str(value).startswith("#")   # no network, no javascript:
+                # same-document refs always; inline artwork only on <image>
+                bad = not (
+                    str(value).startswith("#")
+                    or (_local(el.tag) == "image" and DATA_IMAGE.match(str(value)))
+                )
             if not bad and _local(name) == "style" and CSS_DANGER.search(str(value)):
                 bad = True
             if bad:
@@ -111,12 +123,60 @@ def strip_raster_labels(root):
     return images
 
 
+def take_embedded_model(root):
+    """Pull draw.io's "Include a copy of my diagram" payload off the root, and
+    always remove it.
+
+    It has to go. On the export this was written against it was 1.4 MB - 98% of
+    the file - and it carries **every page of the author's .drawio**, not just
+    the one exported. Shipping that to a reader is both a needless megabyte and
+    a disclosure of diagrams that were never published."""
+    content = root.get("content")
+    if content is None:
+        return None
+    del root.attrib["content"]
+    return content if content.lstrip().startswith("<mxfile") else None
+
+
 def pin_colour_scheme(root):
     """draw.io ships ``color-scheme: light dark`` and light-dark() colours, so the
     diagram inverts with the reader's OS theme. A diagram's colours carry meaning;
     don't let the host page restyle them."""
     style = root.get("style", "")
     root.set("style", re.sub(r"color-scheme\s*:[^;]*;?", "", style).strip() + " color-scheme: light;")
+
+
+def stamp_synthetic_ids(root):
+    """Give an export with no ``data-cell-id`` something to target.
+
+    Only older draw.io builds omit them (the same exports tend to embed the
+    mxfile in a ``content`` attribute instead). Without ids the index comes back
+    empty and nothing can be animated at all, so synthesise one per drawn group,
+    in document order.
+
+    These keys are weaker than real cell ids: they are positional, so editing
+    the diagram and re-exporting renumbers everything after the edit and a
+    script written against them silently shifts. ``ingest`` reports it in
+    ``stats["synthetic_ids"]`` so the admin can say so. Re-exporting from a
+    draw.io that emits ``data-cell-id`` is always the better answer."""
+    if root.find(f".//*[@{CELL_ATTR}]") is not None:
+        return 0
+    n = 0
+    for group in root.iter(f"{{{SVG_NS}}}g"):
+        if group.get(CELL_ATTR):
+            continue
+        # A "cell" is the group that directly holds the drawn shapes, which is
+        # the level draw.io would have tagged. Label groups count too: without
+        # ids a shape and its label are separate siblings, so leaving labels out
+        # makes them float visible over a panel that has not been revealed yet.
+        if not any(
+            _local(c.tag) in GEOMETRY + ("image", "switch", "text", "foreignObject")
+            for c in group
+        ):
+            continue
+        group.set(CELL_ATTR, f"auto-{n}")
+        n += 1
+    return n
 
 
 def add_camera(root):
@@ -225,6 +285,8 @@ def model_from_drawio(data, page=None):
     diagrams = root.findall(".//diagram") if _local(root.tag) == "mxfile" else [root]
     if page is not None:
         diagrams = [d for d in diagrams if d.get("name") == page] or diagrams[:1]
+    diagrams = [_inflate(d) for d in diagrams]
+    diagrams = [d for d in diagrams if d is not None]
     edges, labels, kinds = {}, {}, {}
     for diagram in diagrams[:1]:
         for cell in diagram.iter("mxCell"):
@@ -247,17 +309,39 @@ def model_from_drawio(data, page=None):
     return {"edges": edges, "labels": labels, "kinds": kinds}
 
 
+def _inflate(diagram):
+    """A .drawio page is either plain XML or a deflated, base64'd, url-encoded
+    blob. Exports that embed the model always use the compressed form."""
+    if diagram.find(".//mxCell") is not None:
+        return diagram
+    payload = (diagram.text or "").strip()
+    if not payload:
+        return None
+    try:
+        raw = zlib.decompress(base64.b64decode(payload), -15).decode("utf8")
+        return etree.fromstring(urllib.parse.unquote(raw).encode())
+    except Exception:
+        return None
+
+
 def ingest(svg_bytes, drawio_bytes=None, page=None):
     """Full pass. Returns (markup, index, stats)."""
     root = parse(svg_bytes)
+    embedded = take_embedded_model(root)
     rasters = strip_raster_labels(root)
     dropped, attrs = sanitise(root)
     pin_colour_scheme(root)
+    synthetic = stamp_synthetic_ids(root)
     add_camera(root)
-    model = model_from_drawio(drawio_bytes, page) if drawio_bytes else None
+    # An uploaded .drawio wins; otherwise fall back to whatever the export
+    # embedded, which is the same model and saves a second upload.
+    source = drawio_bytes or (embedded.encode() if embedded else None)
+    model = model_from_drawio(source, page) if source else None
     cells = index(root, model)
     markup = etree.tostring(root, encoding="unicode")
     stats = {
+        "embedded_model_stripped": bool(embedded),
+        "synthetic_ids": synthetic,
         "cells": len(cells),
         "edges": sum(1 for c in cells if c["kind"] == "edge"),
         "named": sum(1 for c in cells if c["label"]),
