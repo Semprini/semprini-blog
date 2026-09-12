@@ -20,6 +20,7 @@ from wagtailmarkdown.blocks import MarkdownBlock
 
 _WHITESPACE = re.compile(r"\s+")
 _PREFORMATTED = re.compile(r"<pre\b.*?</pre>", re.DOTALL | re.IGNORECASE)
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # Markdown link *targets* never survive to here - stripping the <a> tag leaves
 # only the link text. What does survive is a URL an author wrote as the visible
 # text, via an autolink or a pasted address.
@@ -69,11 +70,39 @@ class HeadingBlock(NarratableBlock):
         label = "Heading"
 
 
+def strip_fenced_code(source):
+    """Drop fenced code from Markdown *source*, before it is rendered.
+
+    Stripping ``<pre>`` from the rendered HTML catches most of it, but not the
+    two cases that matter: a fence indented inside a list item, which the
+    renderer leaves as ordinary text, and an unclosed fence, which never becomes
+    a ``<pre>`` at all. Both then get read out loud - a directory listing or a
+    shell session, spoken.
+
+    An unclosed fence swallows the rest of the block. That is the right way to
+    fail: the renderer already treats it as code, so narrating it would be the
+    odd one out.
+    """
+    out, fence = [], None
+    for line in str(source or "").splitlines(keepends=True):
+        marker = _FENCE.match(line)
+        if fence is None:
+            if marker:
+                fence = marker.group(1)[0]
+                continue
+            out.append(line)
+        elif marker and marker.group(1)[0] == fence:
+            fence = None
+    return "".join(out)
+
+
 class ProseBlock(MarkdownBlock):
     """Markdown body text - the authoring path puput already established."""
 
     def narration_text(self, value):
-        rendered = markdown.markdown(str(value or ""), extensions=["extra"])
+        source = strip_fenced_code(value)
+        rendered = markdown.markdown(source, extensions=["extra"])
+        # backstop for indented (4-space) code, which never had a fence
         return to_speech(_PREFORMATTED.sub(" ", rendered))
 
     class Meta:

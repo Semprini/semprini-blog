@@ -9,6 +9,7 @@ django-storages
 boto3
 Markdown
 lxml
+Pygments
 wagtail-markdown
 markdownify
 requests

@@ -74,6 +74,16 @@ curl -s -o /dev/null -w "%{http_code}\n" https://semprini.me/
   block that omits it silently breaks the audio pipeline.
 - **Narration audio is rendered by the `narrator` container**, not in the request cycle. It is
   the only process holding `ELEVEN_LABS_API_KEY`.
+- **Code is never narrated.** `ProseBlock.narration_text()` strips fenced code from the Markdown
+  *source* before rendering, then strips `<pre>` from the HTML as a backstop for indented code.
+  Source-level stripping is what catches a fence indented inside a list item (the renderer leaves
+  it as ordinary text) and an unclosed fence (never becomes a `<pre>` at all). Inline `` `code` ``
+  *is* still read — "the `body` field" should say "the body field".
+- **Code blocks are highlighted server-side by Pygments.** wagtail-markdown already runs the
+  `codehilite` extension; without Pygments it emits a bare `<pre><code>` and Bootstrap 3's
+  `pre{background:#f5f5f5}` / `code{color:#c7254e}` take over, which is grey-on-white with pink
+  text. `app/static/css/codehilite.css` is generated from Pygments' `native` theme (regenerate
+  with the one-liner in its header) and re-grounded on `#141414`.
 
 ### Rich text vs StreamField — this matters
 
