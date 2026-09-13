@@ -60,6 +60,11 @@ def blocks_from_richtext(html):
                         # The alt text was the only description this image ever
                         # had, so it becomes both the caption and what is read.
                         "caption": (node.get("alt") or "").strip(),
+                        # rich text's left/right formats; "fullwidth" and
+                        # anything custom land centred
+                        "alignment": {"left": "left", "right": "right"}.get(
+                            node.get("format"), "center"
+                        ),
                         "narration": "",
                     },
                 )

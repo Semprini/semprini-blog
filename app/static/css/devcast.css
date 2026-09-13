@@ -256,6 +256,23 @@
     max-width: 100%;
     height: auto;
 }
+/* A picture narrower than the column sits where its block says; a wider one
+   fills the column whichever way it is aligned. The caption follows it. */
+.devcast-figure img {
+    display: block;
+}
+.devcast-figure--center img {
+    margin-inline: auto;
+}
+.devcast-figure--right img {
+    margin-left: auto;
+}
+.devcast-figure--center figcaption {
+    text-align: center;
+}
+.devcast-figure--right figcaption {
+    text-align: right;
+}
 .devcast-figure figcaption,
 .devcast-gallery figcaption,
 .devcast-video figcaption,
@@ -438,7 +455,11 @@
 }
 /* Only the drawing is the positioning context for the step captions; the
    controls and title flow underneath it. */
-.dgm-stage { position: relative; }
+.dgm-stage {
+  position: relative;
+  /* A playing diagram repaints every frame; keep that inside the drawing. */
+  contain: paint;
+}
 .dgm-caption {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -452,6 +473,9 @@
   min-height: 56px;
   pointer-events: none;
 }
+/* A script without captions would otherwise leave the gradient darkening the
+   bottom of the drawing for the whole animation. */
+.dgm-caption:empty { display: none; }
 .dgm-bar {
   display: flex;
   align-items: center;

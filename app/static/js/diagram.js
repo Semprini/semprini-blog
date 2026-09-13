@@ -124,7 +124,10 @@ class Diagram {
 	 * <foreignObject width="100%" height="100%">, and 100% resolves against the
 	 * viewport, so any labelled cell reports a box the size of the whole diagram
 	 * and every camera step silently falls back to "fit". Measure the drawn
-	 * shapes instead. */
+	 * shapes instead.
+	 *
+	 * Boxes come out in the camera group's own coordinates, so they are the same
+	 * at any rendered size: a resize never invalidates the timeline. */
 	bbox( el ) {
 
 		const nodes = [ ...el.querySelectorAll( GEOMETRY ) ]
@@ -279,7 +282,13 @@ class Diagram {
 	build() {
 
 		const { gsap } = this;
-		gsap.set( this.cam, { transformOrigin: '0px 0px' } );
+		/* frame() computes x/y for a scale about the drawing's own 0,0. On an SVG
+		 * element GSAP measures transformOrigin from the element's bounding box,
+		 * and the camera group's box is thrown far out by draw.io's 100%-sized
+		 * foreignObject labels - on the platform diagram to -679,-1264, which put
+		 * every zoomed frame off the drawing entirely. svgOrigin is in the SVG's
+		 * own coordinates, so it is 0,0 whatever the labels do. */
+		gsap.set( this.cam, { svgOrigin: '0 0' } );
 		const k = this.speed;
 		const tl = gsap.timeline( { paused: true } );
 		tl.to( {}, { duration: this.duration }, 0 );     // pins the timeline's length
@@ -406,10 +415,17 @@ function wire( diagram ) {
 	const seek = figure.querySelector( '[data-dgm-seek]' );
 	const clock = figure.querySelector( '[data-dgm-clock]' );
 
+	// The clock and scrubber move together, a tenth of a second at a time.
+	// Writing either costs a layout, and the scrubber's value changes on every
+	// frame, so following the playhead exactly was a layout per frame.
+	let shown = '';
 	const paint = () => {
 
+		const time = `${ diagram.t.toFixed( 1 ) }s`;
+		if ( time === shown ) return;
+		shown = time;
 		if ( seek ) seek.value = String( Math.round( ( diagram.t / diagram.duration ) * 1000 ) );
-		if ( clock ) clock.textContent = `${ diagram.t.toFixed( 1 ) }s`;
+		if ( clock ) clock.textContent = time;
 
 	};
 	figure.addEventListener( 'dgm:time', paint );
@@ -426,27 +442,35 @@ function wire( diagram ) {
 	}
 
 	let playing = false;
-	let last = performance.now();
+	let last = 0;
+	let frame = 0;
 
+	// Scheduled only while playing: a paused, narrated or off-screen diagram
+	// costs nothing between frames.
 	function tick( now ) {
 
-		if ( playing ) {
-
-			const next = diagram.t + ( now - last ) / 1000;
-			if ( next < diagram.duration ) diagram.render( next );
-			else if ( diagram.loop ) diagram.render( next - diagram.duration );
-			else { diagram.render( diagram.duration ); setPlaying( false ); }
-
-		}
+		frame = 0;
+		if ( ! playing ) return;
+		const next = diagram.t + Math.max( 0, now - last ) / 1000;
 		last = now;
-		requestAnimationFrame( tick );
+		if ( next < diagram.duration ) diagram.render( next );
+		else if ( diagram.loop ) diagram.render( next - diagram.duration );
+		else { diagram.render( diagram.duration ); setPlaying( false ); return; }
+		frame = requestAnimationFrame( tick );
 
 	}
 
 	function setPlaying( on ) {
 
+		if ( on === playing ) return;
 		playing = on;
 		if ( playBtn ) playBtn.textContent = on ? 'Pause' : 'Play';
+		if ( on && ! frame ) {
+
+			last = performance.now();
+			frame = requestAnimationFrame( tick );
+
+		}
 
 	}
 
@@ -479,7 +503,6 @@ function wire( diagram ) {
 	}
 
 	diagram.render( 0 );
-	requestAnimationFrame( tick );
 
 	if ( diagram.loop && ! diagram.cue ) {
 
@@ -491,23 +514,6 @@ function wire( diagram ) {
 		io.observe( figure );
 
 	}
-
-	let resizeTimer;
-	addEventListener( 'resize', () => {
-
-		// Camera targets are measured in rendered pixels, so a resize invalidates
-		// every one of them. Rebuild and land on the same playhead.
-		clearTimeout( resizeTimer );
-		resizeTimer = setTimeout( () => {
-
-			diagram.flows.forEach( ( f ) => f.el.remove() );
-			diagram.flows = [];
-			diagram.build();
-			diagram.render( diagram.t );
-
-		}, 200 );
-
-	} );
 
 }
 

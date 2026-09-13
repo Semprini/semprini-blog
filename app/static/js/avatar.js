@@ -16,6 +16,7 @@ const LINK_SELECTOR = 'h2.post_title a, .post-summary h5 a';
 const MAX_VIEW_WIDTH = 320;
 const VIEW_ASPECT = 320 / 450;   // portrait: the whole standing figure, wide enough for an extended arm
 const HEADER_RESERVE = 138;      // in-flow height the header keeps; the rest overhangs the page
+const MAX_PIXEL_RATIO = 2;       // a 320px figure gains nothing from a 3x drawing buffer
 const HEAD_MAX_ANGLE = THREE.MathUtils.degToRad( 38 );
 const HEAD_SMOOTH = 6;      // 1/s, larger = snappier
 const HEAD_SWITCH_MS = 1400;
@@ -23,6 +24,8 @@ const ARM_SMOOTH = 4;
 const ARM_REACH = 0.74;     // < upper arm + forearm so the elbow stays bent
 const LOOK_PLANE_Z = 1.6;   // plane in front of the face that pointer rays hit
 const IDLE_AFTER_MS = 4000;
+const REST_FPS = 20;        // frame rate while nothing is going on: see resting()
+const WAKE_MS = 1500;       // full frame rate for this long after anything changes
 // The model stands from y = +1.0 (crown) to -2.17 (soles). The distance fits
 // the lot with a little room to spare: the toes stand ~0.6 proud of the target
 // plane, so perspective magnifies them and a tighter framing clips the feet.
@@ -116,6 +119,15 @@ const handPoint = { L: new THREE.Vector3(), R: new THREE.Vector3() };
 let pinY = 0;               // eased top of the canvas, in document space
 let viewH = 0;              // rendered canvas height, in CSS pixels
 const timer = new THREE.Timer();
+let lastFrameAt = 0;
+let awakeUntil = 0;         // full frame rate until then: see resting()
+let armsMoving = false;
+let layoutQueued = false;
+// Geometry, so a frame never reads the DOM after writing to it: see
+// measureSection(). The canvas box is tracked rather than read back.
+const viewport = { w: window.innerWidth, h: window.innerHeight };
+const canvasBox = { left: 0, top: 0, width: 0, height: 0 };
+const geo = { section: null, bar: null, scrollY: 0, linkVisible: false };
 
 // --- expression state. Every value is a 0..1 (or signed) intent that the
 // face update eases towards, so later features can set them directly.
@@ -150,7 +162,6 @@ window.sempriniAvatar = { pinTo, unpin, setPresenting, speak, setExpression };
 function init() {
 
 	renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true, stencil: true } );
-	renderer.setPixelRatio( window.devicePixelRatio );
 	renderer.toneMapping = THREE.ACESFilmicToneMapping;
 	container.appendChild( renderer.domElement );
 
@@ -161,12 +172,19 @@ function init() {
 
 	const pmremGenerator = new THREE.PMREMGenerator( renderer );
 	scene = new THREE.Scene();
-	scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
+	const room = new RoomEnvironment();
+	scene.environment = pmremGenerator.fromScene( room, 0.04 ).texture;
+	// Only the baked texture is kept; the generator and the room are one-offs.
+	room.dispose();
+	pmremGenerator.dispose();
 
 	new GLTFLoader().load( MODEL_URL, onModelLoaded );
 
 	window.addEventListener( 'pointermove', onPointerMove, { passive: true } );
-	window.addEventListener( 'resize', layout );
+	// Resize fires far faster than frames; animate() lays out once per frame.
+	window.addEventListener( 'resize', () => { layoutQueued = true; wake(); } );
+	// Beside the text, scrolling carries it along and needs every frame.
+	window.addEventListener( 'scroll', () => { if ( pin ) wake(); }, { passive: true } );
 	window.addEventListener( 'blur', () => { pointerInHotzone = false; hoverLink = null; } );
 	document.addEventListener( 'pointerleave', () => { pointerInHotzone = false; hoverLink = null; } );
 	document.addEventListener( 'pointerover', onPointerOver, { passive: true } );
@@ -180,7 +198,7 @@ function init() {
 // beside the text without waiting for the next section.
 function pinned() {
 
-	return pin !== null && window.innerWidth >= PIN_MIN_WIDTH;
+	return pin !== null && viewport.w >= PIN_MIN_WIDTH;
 
 }
 
@@ -188,7 +206,9 @@ function pinned() {
 // page scrolls; the container keeps its place in the header layout.
 function layout() {
 
-	const slot = Math.round( Math.min( MAX_VIEW_WIDTH, Math.max( 180, window.innerWidth * 0.42 ) ) );
+	viewport.w = window.innerWidth;
+	viewport.h = window.innerHeight;
+	const slot = Math.round( Math.min( MAX_VIEW_WIDTH, Math.max( 180, viewport.w * 0.42 ) ) );
 	const slotH = Math.round( slot / VIEW_ASPECT );
 	// The header keeps its slot whatever the avatar is doing, so narration
 	// starting does not reflow the page underneath it.
@@ -198,24 +218,39 @@ function layout() {
 
 	const w = pinned() ? Math.round( slot * PIN_SCALE ) : slot;
 	viewH = Math.round( w / VIEW_ASPECT );
-	renderer.setSize( w, viewH );
-	camera.aspect = w / viewH;
-	camera.updateProjectionMatrix();
+	// Both of these reallocate the drawing buffer, and this runs on every
+	// section change as well as on resize, so only when something changed.
+	const ratio = Math.min( window.devicePixelRatio, MAX_PIXEL_RATIO );
+	if ( ratio !== renderer.getPixelRatio() ) renderer.setPixelRatio( ratio );
+	if ( w !== canvasBox.width || viewH !== canvasBox.height ) {
+
+		renderer.setSize( w, viewH );
+		camera.aspect = w / viewH;
+		camera.updateProjectionMatrix();
+		canvasBox.width = w;
+		canvasBox.height = viewH;
+
+	}
 
 	const canvas = renderer.domElement;
 	if ( pinned() ) {
 
 		const right = ( pin.content || pin.el ).getBoundingClientRect().right;
-		const x = Math.min( window.innerWidth - w - PIN_MARGIN, right - w * PIN_OVERLAP );
-		canvas.style.left = `${ Math.round( Math.max( PIN_MARGIN, x ) ) }px`;
+		const x = Math.min( viewport.w - w - PIN_MARGIN, right - w * PIN_OVERLAP );
+		canvasBox.left = Math.round( Math.max( PIN_MARGIN, x ) );
 
 	} else {
 
-		canvas.style.left = `${ Math.round( container.getBoundingClientRect().left ) }px`;
+		canvasBox.left = Math.round( container.getBoundingClientRect().left );
+		canvasBox.top = 0;
 		canvas.style.top = '0px';
 
 	}
+	canvas.style.left = `${ canvasBox.left }px`;
+	// The section's first line may have moved; sectionPoint measures it again.
+	if ( pin ) pin.start = null;
 	needsRender = true;
+	wake();
 
 }
 
@@ -225,23 +260,24 @@ function layout() {
 // every scroll.
 function placePin( dt, snap = false ) {
 
-	if ( ! pinned() ) return;
+	if ( ! pinned() || ! geo.section ) return;
 
-	const rect = pin.el.getBoundingClientRect();
-	const goal = rect.top + window.scrollY + rect.height / 2 - viewH / 2;
+	const rect = geo.section;
+	const goal = rect.top + geo.scrollY + rect.height / 2 - viewH / 2;
 	pinY = ( snap || REDUCED_MOTION ) ? goal : ease( pinY, goal, PIN_SMOOTH, dt );
 
 	// The player bar is sticky at the top of the page: stand under it, not across it.
 	let floor = PIN_MARGIN;
-	if ( pin.avoid ) {
+	const bar = geo.bar;
+	if ( bar && bar.top <= PIN_MARGIN && bar.bottom > 0 ) floor = bar.bottom + PIN_MARGIN;
 
-		const bar = pin.avoid.getBoundingClientRect();
-		if ( bar.top <= PIN_MARGIN && bar.bottom > 0 ) floor = bar.bottom + PIN_MARGIN;
+	const top = Math.round( Math.min( viewport.h - viewH - PIN_MARGIN, Math.max( floor, pinY - geo.scrollY ) ) );
+	if ( top !== canvasBox.top ) {
+
+		canvasBox.top = top;
+		renderer.domElement.style.top = `${ top }px`;
 
 	}
-
-	const top = Math.min( window.innerHeight - viewH - PIN_MARGIN, Math.max( floor, pinY - window.scrollY ) );
-	renderer.domElement.style.top = `${ Math.round( top ) }px`;
 
 }
 
@@ -254,6 +290,7 @@ function pinTo( el, { content = null, avoid = null } = {} ) {
 	const changed = ! pin || pin.el !== el;
 	pin = { el, content, avoid };
 	layout();
+	measureSection();
 	placePin( 0, arriving );
 	if ( changed && present.on ) newSection();
 
@@ -281,6 +318,22 @@ function setPresenting( on ) {
 function presenting() {
 
 	return present.on && pinned() && !! skinned;
+
+}
+
+// Nothing needs every frame: no narration, no pointer about, no hovered title,
+// no arm still settling and nothing changed a moment ago. Breathing and
+// blinking are all that is left, and they read fine at REST_FPS.
+function resting( now ) {
+
+	return ! presenting() && ! hoverLink && ! pointerInHotzone && ! armsMoving
+		&& now - lastPointerTime > IDLE_AFTER_MS && now > awakeUntil;
+
+}
+
+function wake() {
+
+	awakeUntil = performance.now() + WAKE_MS;
 
 }
 
@@ -327,19 +380,57 @@ function nextGesture( now ) {
 const sectionRange = document.createRange();
 function sectionPoint( out, start ) {
 
-	if ( ! pin || ! pin.el.isConnected ) return null;
-	const box = pin.el.getBoundingClientRect();
+	const box = geo.section;
+	if ( ! box ) return null;
 	if ( start ) {
 
-		sectionRange.selectNodeContents( pin.el );
-		const rects = sectionRange.getClientRects();
-		const r = rects.length ? rects[ 0 ] : box;
-		return screenToWorld( r.left + Math.min( 40, r.width / 2 ), r.top + r.height / 2, out );
+		pin.start = pin.start || firstLine( pin.el, box );
+		return screenToWorld( box.left + pin.start.x, box.top + pin.start.y, out );
 
 	}
 	const top = Math.max( box.top, 0 );
-	const bottom = Math.min( box.bottom, window.innerHeight );
+	const bottom = Math.min( box.bottom, viewport.h );
 	return screenToWorld( box.left + box.width * 0.55, ( top + bottom ) / 2, out );
+
+}
+
+// Where a section's first line starts, as an offset from the section's box, so
+// it is measured once per section rather than every frame - a range over the
+// whole section returns a box for every line and element in it. Sections open
+// with their permalink anchor, invisible until hovered, and headings with an
+// alias: point past both at the content.
+function firstLine( el, box ) {
+
+	const content = [ ...el.children ].find( ( c ) => ! c.matches( '.cue-section__anchor, .cue-section__alias' ) );
+	let r = null;
+	if ( content ) {
+
+		sectionRange.selectNodeContents( content );
+		r = [ ...sectionRange.getClientRects() ].find( ( rect ) => rect.width && rect.height );
+
+	}
+	r = r || box;
+	return { x: r.left - box.left + Math.min( 40, r.width / 2 ), y: r.top - box.top + r.height / 2 };
+
+}
+
+// Every DOM read a frame needs, taken before placePin() writes the canvas
+// position: reading after that write forces a synchronous layout, and this
+// runs every frame. The canvas box is never read back - only this code moves it.
+function measureSection() {
+
+	const on = pinned() && pin.el.isConnected;
+	geo.section = on ? pin.el.getBoundingClientRect() : null;
+	geo.bar = on && pin.avoid ? pin.avoid.getBoundingClientRect() : null;
+	geo.scrollY = window.scrollY;
+
+}
+
+function measure() {
+
+	measureSection();
+	if ( geo.section && present.pointing && ! pin.start ) pin.start = firstLine( pin.el, geo.section );
+	geo.linkVisible = skinned ? updateLinkPoint() : false;
 
 }
 
@@ -551,7 +642,7 @@ function setupMouthPortal( meshes ) {
 
 function screenToWorld( clientX, clientY, out ) {
 
-	const rect = renderer.domElement.getBoundingClientRect();
+	const rect = canvasBox;
 	pointerNDC.set(
 		( ( clientX - rect.left ) / rect.width ) * 2 - 1,
 		- ( ( clientY - rect.top ) / rect.height ) * 2 + 1
@@ -563,7 +654,8 @@ function screenToWorld( clientX, clientY, out ) {
 
 function onPointerMove( ev ) {
 
-	const rect = renderer.domElement.getBoundingClientRect();
+	const c = canvasBox;
+	const rect = { left: c.left, top: c.top, right: c.left + c.width, bottom: c.top + c.height };
 	const hz = HOTZONE.getBoundingClientRect();
 	const inside = ( r ) => ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
 	pointerInHotzone = inside( hz ) || inside( rect );
@@ -895,8 +987,16 @@ function solveArms() {
 
 function animate() {
 
+	// At rest, skip frames down to REST_FPS. The few ms of slack land a 60Hz
+	// display on every third frame rather than every fourth.
+	const now = performance.now();
+	if ( resting( now ) && now - lastFrameAt < 1000 / REST_FPS - 4 ) return;
+	lastFrameAt = now;
+
 	timer.update();
 	const dt = Math.min( timer.getDelta(), 0.1 );
+	if ( layoutQueued ) { layoutQueued = false; layout(); }
+	measure();
 	placePin( dt );
 	if ( ! skinned ) {
 
@@ -905,9 +1005,8 @@ function animate() {
 
 	}
 
-	const now = performance.now();
 	elapsed += dt;
-	const linkVisible = updateLinkPoint();
+	const linkVisible = geo.linkVisible;
 	updateLookTargets( now );
 
 	// Interaction-driven expression: brows up for a hovered title, squint a little
@@ -928,15 +1027,12 @@ function animate() {
 	const breath = updateBreath();
 	updateHead( dt, breath );
 	updateFace( dt, breath );
-	const armsMoved = updateArms( dt, now, linkVisible );
-	if ( armsMoved ) solveArms();
+	armsMoving = updateArms( dt, now, linkVisible );
+	if ( armsMoving ) solveArms();
 
-	// Breathing never settles, so render every frame while the tab is visible.
-	if ( ! document.hidden || needsRender ) {
-
-		renderer.render( scene, camera );
-		needsRender = false;
-
-	}
+	// Breathing never settles, so every frame that gets this far renders. A
+	// hidden tab gets no frames at all.
+	renderer.render( scene, camera );
+	needsRender = false;
 
 }

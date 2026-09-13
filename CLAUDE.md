@@ -14,6 +14,12 @@ Traefik, Keycloak and the `semprini_internal` Docker network this stack joins as
 
 ## Deployment
 
+**A job is not finished until it is live on semprini.me.** When a change is complete, push it
+live without waiting to be asked: dump the database, `sync-to-host.sh --deploy`, publish static
+to S3, apply any content the change needs in production (a diagram script, a snippet, a page
+edit), then verify on the live site. Downtime from a restart is fine. Local tests passing is not
+done.
+
 **Host:** `ubuntu@3.107.254.151` — AWS Lightsail, `ap-southeast-2`, instance `semprini-core`,
 x86_64. SSH by key, no `~/.ssh/config` entry needed. Traefik (from semprini-core) fronts it;
 the web container binds `172.17.0.1:8000` only.

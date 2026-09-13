@@ -113,6 +113,13 @@ class ProseBlock(MarkdownBlock):
 class ImageBlock(NarratableBlock):
     image = ImageChooserBlock()
     caption = blocks.CharBlock(required=False, max_length=250)
+    # Blocks stored before this field existed come back with the default, so
+    # every existing picture is centred without touching its page.
+    alignment = blocks.ChoiceBlock(
+        choices=[("left", "Left"), ("center", "Centre"), ("right", "Right")],
+        default="center",
+        help_text="Where a picture narrower than the column sits. Wider ones fill it either way.",
+    )
     narration = blocks.TextBlock(
         required=False,
         help_text="Spoken instead of the caption. Leave empty to skip this image in narration.",

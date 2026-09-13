@@ -14,7 +14,7 @@ from wagtail.images.models import Image
 from wagtail.models import Page, Site
 
 from . import narration
-from .blocks import CodeBlock, ProseBlock
+from .blocks import CodeBlock, ImageBlock, ProseBlock
 from .conversion import blocks_from_richtext
 from .models import (
     AudioCue,
@@ -727,7 +727,43 @@ class AlignmentTests(TestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEST_MEDIA)
+class ImageAlignmentTests(TestCase):
+    def setUp(self):
+        self.image = Image.objects.create(
+            title="General",
+            file=ImageFile(BytesIO(_PNG), name="general.png"),
+            width=1,
+            height=1,
+        )
+
+    def render(self, **value):
+        block = ImageBlock()
+        return block.render(
+            block.to_python({"image": self.image.pk, "caption": "", "narration": "", **value})
+        )
+
+    def test_a_picture_stored_before_alignment_existed_is_centred(self):
+        self.assertIn("devcast-figure--center", self.render())
+
+    def test_the_editor_can_move_a_picture_to_one_side(self):
+        self.assertIn("devcast-figure--right", self.render(alignment="right"))
+
+
 class RichTextConversionTests(TestCase):
+    def test_a_side_aligned_image_keeps_its_side(self):
+        image = Image.objects.create(
+            title="Portrait",
+            file=ImageFile(BytesIO(_PNG), name="portrait.png"),
+            width=1,
+            height=1,
+        )
+        blocks = blocks_from_richtext(
+            f'<embed embedtype="image" format="left" id="{image.pk}" alt="A portrait"/>'
+            f'<embed embedtype="image" format="fullwidth" id="{image.pk}" alt="A portrait"/>'
+        )
+        self.assertEqual([value["alignment"] for _, value in blocks], ["left", "center"])
+
     def test_rules_and_images_split_prose_into_addressable_blocks(self):
         image = Image.objects.create(
             title="Diagram",

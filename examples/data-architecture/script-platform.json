@@ -1,9 +1,28 @@
 {
  "loop": true,
- "duration": 14,
+ "duration": 19,
  "steps": [
   {
    "at": 0.0,
+   "camera": [
+    "0UGvR22cpxOxPkpBHoht-1",
+    "0UGvR22cpxOxPkpBHoht-10",
+    "0UGvR22cpxOxPkpBHoht-11",
+    "0UGvR22cpxOxPkpBHoht-13",
+    "0UGvR22cpxOxPkpBHoht-15",
+    "0UGvR22cpxOxPkpBHoht-16",
+    "0UGvR22cpxOxPkpBHoht-17",
+    "0UGvR22cpxOxPkpBHoht-2",
+    "0UGvR22cpxOxPkpBHoht-20",
+    "0UGvR22cpxOxPkpBHoht-22",
+    "0UGvR22cpxOxPkpBHoht-23",
+    "0UGvR22cpxOxPkpBHoht-4",
+    "0UGvR22cpxOxPkpBHoht-6",
+    "0UGvR22cpxOxPkpBHoht-8",
+    "0UGvR22cpxOxPkpBHoht-9",
+    "QD_1u9uqRuat_YUQg7xP-2"
+   ],
+   "padding": 40,
    "flow": [
     [
      "0",
@@ -79,6 +98,30 @@
   },
   {
    "at": 3.5,
+   "camera": [
+    "dc25-a-cloud",
+    "dc25-a-domain",
+    "dc25-a-hasura",
+    "dc25-a-hive",
+    "dc25-a-kafka",
+    "dc25-a-lh1",
+    "dc25-a-lh1b",
+    "dc25-a-lh2",
+    "dc25-a-lh2b",
+    "dc25-a-lh3",
+    "dc25-a-lh3b",
+    "dc25-a-minio",
+    "dc25-a-net",
+    "dc25-a-pg",
+    "dc25-a-repl",
+    "dc25-a-title",
+    "dc25-a-trino",
+    "dc25-a-vol"
+   ],
+   "padding": 30
+  },
+  {
+   "at": 4.5,
    "appear": [
     "dc25-a-cloud",
     "dc25-a-domain",
@@ -101,7 +144,34 @@
    ]
   },
   {
-   "at": 7.5,
+   "at": 8.5,
+   "camera": [
+    "dc25-b-ab-repl",
+    "dc25-b-cc-gqlc",
+    "dc25-b-cc-stream",
+    "dc25-b-domain",
+    "dc25-b-g-airbyte",
+    "dc25-b-g-confluent",
+    "dc25-b-g-hasura",
+    "dc25-b-g-neon",
+    "dc25-b-g-snow",
+    "dc25-b-hasura-sg",
+    "dc25-b-iceberg",
+    "dc25-b-l-airbyte",
+    "dc25-b-l-confluent",
+    "dc25-b-l-hasura",
+    "dc25-b-l-neon",
+    "dc25-b-l-snow",
+    "dc25-b-neon-pg",
+    "dc25-b-polaris",
+    "dc25-b-snowpark",
+    "dc25-b-title",
+    "dc25-divider"
+   ],
+   "padding": 30
+  },
+  {
+   "at": 9.5,
    "appear": [
     "dc25-b-ab-repl",
     "dc25-b-cc-gqlc",
@@ -125,6 +195,10 @@
     "dc25-b-title",
     "dc25-divider"
    ]
+  },
+  {
+   "at": 13.5,
+   "camera": "fit"
   }
  ]
 }
