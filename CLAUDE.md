@@ -9,9 +9,6 @@ diagrams.
 Depends on the **semprini-core** stack (`/home/paul/Dev/semprini-core`) being up first: it owns
 Traefik, Keycloak and the `semprini_internal` Docker network this stack joins as `external`.
 
-> `semprini-core/CLAUDE.md` still says the host is Oracle Cloud ARM64. It is not — see below.
-> Trust `semprini-core/docs/dns-records.md`.
-
 ## Deployment
 
 **A job is not finished until it is live on semprini.me.** When a change is complete, push it
@@ -90,6 +87,32 @@ curl -s -o /dev/null -w "%{http_code}\n" https://semprini.me/
   `pre{background:#f5f5f5}` / `code{color:#c7254e}` take over, which is grey-on-white with pink
   text. `app/static/css/codehilite.css` is generated from Pygments' `native` theme (regenerate
   with the one-liner in its header) and re-grounded on `#141414`.
+
+### Sign-in and permissions — Keycloak decides
+
+Visitors sign in through Keycloak (`app/oidc_backend.py`). Permissions come **only** from roles
+on the `semprini-blog` Keycloak client, and every login rebuilds them:
+
+| Client role | Grants |
+|---|---|
+| `superuser` | `is_superuser` and `is_staff` |
+| `wagtail_admin` | `is_staff` |
+| `wagtail_editor` | Editors group |
+| `wagtail_moderator` | Moderators group |
+
+Every other group is removed at login, and realm roles are ignored. Other apps use realm roles
+too (`superuser` means edit rights in conk), so holding one must grant nothing here. A GitHub
+visitor gets only the realm `guest` role, so they get nothing.
+
+- **Grant access in Keycloak, not the Wagtail admin.** A group or the admin flag set by hand on
+  an OIDC user lasts only until their next login. Before the backend synced groups, the GitHub
+  user `semprini` kept moderator access for ten days through hand-set groups while holding only
+  `guest` in Keycloak.
+- The local `admin` superuser signs in with a password at `/admin/login/`
+  (ModelBackend) and is not touched by the sync. It is the break-glass account.
+- The login's token exchange calls `auth.semprini.me`, which only resolves to something
+  reachable on `semprini_internal`; `web` must stay on that network (see `docker-compose.yml`).
+- Tests: `cd app && ../.venv/bin/python manage.py test test_oidc_backend`.
 
 ### Rich text vs StreamField — this matters
 

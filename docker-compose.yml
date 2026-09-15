@@ -6,8 +6,9 @@ volumes:
       device: ./data/postgres18_data
       o: bind  
 
-# Shared with the core stack so pgadmin can reach this database without any
-# port being published on the host. Created by semprini-core.
+# Shared with the core stack, so pgadmin can reach this database without any
+# port being published on the host, and web can reach Keycloak. Created by
+# semprini-core.
 networks:
   internal:
     name: semprini_internal
@@ -32,6 +33,12 @@ services:
       - ./.env.prod
     depends_on:
       - db
+    # The OIDC token exchange calls auth.semprini.me, which semprini-core's
+    # split-horizon DNS resolves to Traefik on semprini_internal. Off that network
+    # the call hangs until gunicorn kills the worker and /oidc/callback/ returns 500.
+    networks:
+      - default
+      - internal
 
   # Drains the narration render queue. Runs the same image as web, but it is
   # the only process that ever holds ELEVEN_LABS_API_KEY: an internet-facing
