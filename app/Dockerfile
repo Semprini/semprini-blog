@@ -64,4 +64,7 @@ RUN python manage.py collectstatic --noinput --clear
 #   PRACTICE. The database should be migrated manually or using the release
 #   phase facilities of your hosting platform. This is used only so the
 #   Wagtail instance can be started with a simple "docker run" command.
-CMD echo KEY=$SECRET_KEY; set -xe; python manage.py migrate --noinput; gunicorn --log-level debug --capture-output --enable-stdio-inheritance wsgi:application
+# Container output is shipped to Loki and kept 30 days, so never print the
+# environment here. gunicorn's DEBUG level logs a line for every request,
+# scanners included; Traefik's access log already records them.
+CMD set -xe; python manage.py migrate --noinput; gunicorn --log-level info --capture-output --enable-stdio-inheritance wsgi:application
