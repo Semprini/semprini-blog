@@ -93,6 +93,20 @@ function start() {
 
 	const duration = () => ( Number.isFinite( audio.duration ) ? audio.duration : track.audio.duration || 0 );
 	const storageKey = `devcast:${ location.pathname }`;
+
+	// Listening is reported to Umami (semprini-core's ops-umami) as custom events,
+	// each at most once per page view: narration-play, narration-half and
+	// narration-finished. The audio is served from S3, so no server log sees it.
+	// The tracker may be blocked or still loading; a missed report is retried on
+	// the next occasion, and playback never waits on it.
+	const reported = new Set();
+	function report( name ) {
+
+		if ( reported.has( name ) || typeof window.umami?.track !== 'function' ) return;
+		reported.add( name );
+		window.umami.track( name );
+
+	}
 	const content = document.querySelector( '.audioentry' );
 	let current = -1;
 	let lastManualScroll = 0;
@@ -179,6 +193,8 @@ function start() {
 		const total = duration();
 		if ( total ) seek.value = String( Math.round( ( audio.currentTime / total ) * 1000 ) );
 		sessionStorage.setItem( storageKey, String( audio.currentTime ) );
+		// Seeking while paused also fires timeupdate; only listening counts.
+		if ( total && ! audio.paused && audio.currentTime >= total / 2 ) report( 'narration-half' );
 
 	} );
 
@@ -201,6 +217,7 @@ function start() {
 
 	audio.addEventListener( 'play', () => {
 
+		report( 'narration-play' );
 		walking = true;
 		walkAvatar();
 		avatar()?.setPresenting( true );
@@ -212,6 +229,7 @@ function start() {
 	audio.addEventListener( 'pause', () => avatar()?.setPresenting( false ) );
 	audio.addEventListener( 'ended', () => {
 
+		report( 'narration-finished' );
 		walking = false;
 		avatar()?.unpin();
 
