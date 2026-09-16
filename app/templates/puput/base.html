@@ -25,6 +25,9 @@
                    {% endblock meta_description %}"/>
     {% block social_share %}{% endblock social_share %}
     <link rel="canonical" href="{% block canonical %}{% canonical_url %}{% endblock canonical %}"/>
+    {# Icons. The .ico carries 16/32/48; browsers that grok SVG take that instead. #}
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" sizes="any">
+    <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
 
     <!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
     <!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->

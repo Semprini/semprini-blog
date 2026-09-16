@@ -16,6 +16,12 @@ import views
 
 urlpatterns = [
     path("robots.txt", views.robots_txt, name="robots_txt"),
+    # Browsers ask for /favicon.ico whether or not a page declares an icon, and
+    # static is on S3, so send them there rather than 404ing.
+    path("favicon.ico", views.favicon_ico, name="favicon_ico"),
+    # An external monitor has polled this every 30 minutes since the app moved
+    # off Lambda; the view survived the move, the route did not.
+    path("api/heartbeat/", views.heartbeat, name="heartbeat"),
     path("django-admin/", admin.site.urls),
     path("admin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),

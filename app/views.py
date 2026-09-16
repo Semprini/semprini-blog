@@ -1,7 +1,9 @@
 import os
 
 from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import HttpResponse, JsonResponse
+from django.views.generic.base import RedirectView
 
 from mozilla_django_oidc.views import OIDCAuthenticationRequestView
 
@@ -15,9 +17,28 @@ def robots_txt(request):
         "User-agent: *\n"
         "Disallow: /admin/\n"
         "Disallow: /django-admin/\n"
+        # The comment form's action is a POST-only endpoint, so a crawler that
+        # treats it as a link just collects 405s. SemrushBot does exactly that.
+        "Disallow: /feedback/\n"
         "Sitemap: https://www.semprini.me/sitemap.xml\n",
         content_type="text/plain",
     )
+
+
+class FaviconRedirectView(RedirectView):
+    """Points /favicon.ico at the real icon, wherever static happens to live.
+
+    Resolved per request rather than at import time because STATIC_URL is S3 in
+    production and a local path in development.
+    """
+
+    permanent = True
+
+    def get_redirect_url(self, *args, **kwargs):
+        return staticfiles_storage.url('images/favicon.ico')
+
+
+favicon_ico = FaviconRedirectView.as_view()
 
 
 class SempriniOIDCAuthenticationRequestView(OIDCAuthenticationRequestView):
