@@ -19,6 +19,12 @@ class FeedbackTestCase(TestCase):
         self.blog.add_child(instance=self.entry)
         self.entry.save_revision().publish()
         Site.objects.all().update(root_page=root)
+        # .update() is a queryset write, so no post_save fires and Wagtail never
+        # drops its cached site root paths. The cache is LocMemCache, which
+        # outlives the per-test transaction rollback, so whatever an earlier
+        # test left there would still be in force here and self.entry.url would
+        # come back None.
+        Site.clear_site_root_paths_cache()
 
         self.moderator = User.objects.create_superuser('mod', 'mod@example.com', 'pw')
         self.entry_url = self.entry.url

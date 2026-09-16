@@ -12,8 +12,10 @@ from puput import urls as puput_urls
 
 from search import views as search_views
 import feeds
+import views
 
 urlpatterns = [
+    path("robots.txt", views.robots_txt, name="robots_txt"),
     path("django-admin/", admin.site.urls),
     path("admin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),

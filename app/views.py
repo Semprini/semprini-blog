@@ -1,13 +1,23 @@
 import os
 
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 
 from mozilla_django_oidc.views import OIDCAuthenticationRequestView
 
 
 def heartbeat(request):
     return JsonResponse({ 'build_number': f'{os.environ.get("BUILD_NUMBER", "0")}' })
+
+
+def robots_txt(request):
+    return HttpResponse(
+        "User-agent: *\n"
+        "Disallow: /admin/\n"
+        "Disallow: /django-admin/\n"
+        "Sitemap: https://www.semprini.me/sitemap.xml\n",
+        content_type="text/plain",
+    )
 
 
 class SempriniOIDCAuthenticationRequestView(OIDCAuthenticationRequestView):
