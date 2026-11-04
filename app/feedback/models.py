@@ -85,6 +85,9 @@ class Comment(models.Model):
         _('email'), blank=True,
         help_text=_('Never published; for the moderator only.'),
     )
+    # An anonymous commenter's browser, so they can see and delete their own comment.
+    # Empty for a signed-in commenter: their key would sign in as them, and it is
+    # read by Informatica's catalog (semprini-core, setup-informatica.py).
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     body = models.TextField()

@@ -80,6 +80,13 @@ class FeedbackTestCase(TestCase):
         self.assertTrue(Comment.objects.get().is_approved)
         self.assertIn('comment=posted', response['Location'])
 
+    def test_signed_in_comment_stores_no_session_key(self):
+        # It would sign in as them, and Informatica's catalog reads the column.
+        self.client.force_login(self.moderator)
+        self.post_comment(body='from the desk of the mod')
+
+        self.assertEqual(Comment.objects.get().session_key, '')
+
     def test_honeypot_silently_drops_the_comment(self):
         self.post_comment(website='http://spam.example')
         self.assertFalse(Comment.objects.exists())
@@ -167,6 +174,18 @@ class FeedbackTestCase(TestCase):
     # --- deleting -----------------------------------------------------------
 
     def test_anonymous_author_can_delete_their_own_comment(self):
+        self.post_comment()
+        comment = Comment.objects.get()
+
+        self.client.post(
+            reverse('feedback_delete_comment', args=[comment.id]),
+            {'next': self.entry_url},
+        )
+        self.assertFalse(Comment.objects.exists())
+
+    def test_signed_in_author_can_delete_their_own_comment(self):
+        reader = User.objects.create_user('reader', 'reader@example.com', 'pw')
+        self.client.force_login(reader)
         self.post_comment()
         comment = Comment.objects.get()
 

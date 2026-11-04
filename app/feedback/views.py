@@ -102,7 +102,9 @@ def add_comment(request, entry_page_id):
 
     user = request.user if request.user.is_authenticated else None
     moderator = is_moderator(request.user)
-    session_key = _session_key(request)
+    # Only an anonymous visitor needs one, to see and delete their own comment. A
+    # signed-in visitor's key would sign in as them, so it is never stored.
+    session_key = '' if user else _session_key(request)
 
     parent = None
     parent_id = request.POST.get('parent_id', '')
